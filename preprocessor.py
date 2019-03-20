@@ -9,8 +9,9 @@ from filehandler import Filehandler
 class Preprocessor:
 
     def __init__(self):
-        self.dataset_raw = None
+        self.dataset = None
         self.filehandler = None
+        self.total_rows = None
         self.preprocess()
 
     @staticmethod
@@ -22,179 +23,95 @@ class Preprocessor:
         dataset.fillna('', inplace=True)
 
     def data_analysis(self):
-        print('_' * 80, '=== Dataset Info ===', sep='\n')
-        print('Shape {}'.format(self.dataset_raw.shape))
-        print('\n', 'Features', self.dataset_raw.columns.values)
-        for col in self.dataset_raw:
-            print(col, len(self.dataset_raw[col].unique()))
+        print('--- Shape')
+        print('\tRow count:\t', '{}'.format(self.total_rows))
+        print('\tColumn count:\t', '{}'.format(self.dataset.shape[1]))
 
-        print('\n', 'Label Binary Count', self.dataset_raw['label_binary'].value_counts())
-        print('\n', 'Label Type Count', self.dataset_raw.groupby('label').label_binary.count(), '\n')
+        print('\n--- Row count by binary label')
+        series = self.dataset['label_binary'].value_counts()
+        for idx, val in series.iteritems():
+            print('\t{}: {} ({:6.3f}%)'.format(idx, val, ((val / self.total_rows) * 100)))
 
-        print(self.dataset_raw[['label', 'duration']].groupby(['label'], as_index=False).mean().sort_values(by='duration',
-                                                                                                       ascending=False), '_'*80, sep='\n')
-        print(
-            self.dataset_raw[['label', 'label_binary','protocol_type']].groupby(['label', 'protocol_type'], as_index=False).count().sort_values(by=['label','protocol_type'],
-                                                                                                          ascending=True),
-            '_' * 80, sep='\n')
+        print('\n--- Row count by attack group')
+        series = self.dataset['attack_group'].value_counts()
+        for idx, val in series.iteritems():
+            print('\t{}: {} ({:6.3f}%)'.format(idx, val, ((val / self.total_rows) * 100)))
 
-        print(
-            self.dataset_raw[['label', 'label_binary','service']].groupby(['label', 'service'], as_index=False).count().sort_values(by=['label','service'],
-                                                                                                          ascending=True),
-            '_' * 80, sep='\n')
+        print('\n--- Row count by attack group/label')
+        df = self.dataset.groupby(['attack_group', 'label', ])[['label_binary']].count()
+        df = df.rename(columns={'label_binary': 'Count'})
+        df['Percent'] = (df['Count'] / self.total_rows) * 100
+        df_flat = df.reset_index()
+        print(df_flat)
 
-        print(
-            self.dataset_raw[['label', 'label_binary', 'flag']].groupby(['label', 'flag'],
-                                                                           as_index=False).count().sort_values(
-                by=['label', 'flag'],
-                ascending=True),
-            '_' * 80, sep='\n')
+        print('\n--- Column unique value count')
+        for col in self.dataset:
+            print('\t{} ({})'.format(col, len(self.dataset[col].unique())))
 
-        print(self.dataset_raw[['label', 'src_bytes']].groupby(['label'], as_index=False).mean().sort_values(by='src_bytes',
-                                                                                                        ascending=False),
-          '_' * 80, sep='\n')
+    def data_discovery(self):
+        self.total_rows = self.dataset.shape[0]
+        print('_' * 40, ' Data Discovery - Full Dataset', '_' * 40, '\n')
+        self.data_analysis()
 
-        print(self.dataset_raw[['label', 'dst_bytes']].groupby(['label'], as_index=False).mean().sort_values(
-            by='dst_bytes',
-            ascending=False),
-              '_' * 80, sep='\n')
+        print('\n--- Duplicates by attack_group/label')
+        df = self.dataset.groupby(self.dataset.columns.tolist()).size().reset_index(name='duplicates')
+        df['duplicates'] = df['duplicates'] - 1
+        df_flat = df.groupby(['attack_group', 'label', ])[['duplicates']].sum().reset_index()
+        print(df_flat)
 
-        print(self.dataset_raw[['label', 'wrong_fragment']].groupby(['label'], as_index=False).mean().sort_values(
-            by='wrong_fragment',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'urgent']].groupby(['label'], as_index=False).mean().sort_values(
-            by='urgent',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'hot']].groupby(['label'], as_index=False).mean().sort_values(
-            by='hot',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'num_failed_logins']].groupby(['label'], as_index=False).mean().sort_values(
-            by='num_failed_logins',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'logged_in']].groupby(['label'], as_index=False).count().sort_values(
-            by='logged_in',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'num_compromised']].groupby(['label'], as_index=False).count().sort_values(
-            by='num_compromised',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'root_shell']].groupby(['label'], as_index=False).count().sort_values(
-            by='root_shell',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'su_attempted']].groupby(['label'], as_index=False).count().sort_values(
-            by='su_attempted',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'num_root']].groupby(['label'], as_index=False).count().sort_values(
-            by='num_root',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'num_file_creations']].groupby(['label'], as_index=False).count().sort_values(
-            by='num_file_creations',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'num_shells']].groupby(['label'], as_index=False).mean().sort_values(
-            by='num_shells',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'num_access_files']].groupby(['label'], as_index=False).mean().sort_values(
-            by='num_access_files',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'num_outbound_cmds']].groupby(['label'], as_index=False).mean().sort_values(
-            by='num_outbound_cmds',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'is_host_login']].groupby(['label'], as_index=False).count().sort_values(
-            by='is_host_login',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'is_guest_login']].groupby(['label'], as_index=False).count().sort_values(
-            by='is_guest_login',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'count']].groupby(['label'], as_index=False).count().sort_values(
-            by='count',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'srv_count']].groupby(['label'], as_index=False).count().sort_values(
-            by='srv_count',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'serror_rate']].groupby(['label'], as_index=False).mean().sort_values(
-            by='serror_rate',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'srv_serror_rate']].groupby(['label'], as_index=False).mean().sort_values(
-            by='srv_serror_rate',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'rerror_rate']].groupby(['label'], as_index=False).mean().sort_values(
-            by='rerror_rate',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-        print(self.dataset_raw[['label', 'srv_rerror_rate']].groupby(['label'], as_index=False).mean().sort_values(
-            by='srv_rerror_rate',
-            ascending=False),
-            '_' * 80, sep='\n')
-
-
+        print('\n', '_' * 40, ' Data Discovery - Dataset Without Duplicates', '_' * 40, '\n')
+        self.dataset.drop_duplicates(keep='first', inplace=True)
+        self.total_rows = self.dataset.shape[0]
+        self.data_analysis()
 
 
 
     def clean_label(self):
-        self.dataset_raw['label'] = self.dataset_raw['label'].str.rstrip('.')
+        self.dataset['label'] = self.dataset['label'].str.rstrip('.')
 
     def set_binary_label(self):
         conditions = [
-            (self.dataset_raw['label'] == 'normal'),
-            (self.dataset_raw['label'] == 'back') | (self.dataset_raw['label'] == 'buffer_overflow') |
-            (self.dataset_raw['label'] == 'ftp_write') | (self.dataset_raw['label'] == 'guess_passwd') |
-            (self.dataset_raw['label'] == 'imap') | (self.dataset_raw['label'] == 'ipsweep') |
-            (self.dataset_raw['label'] == 'land') | (self.dataset_raw['label'] == 'loadmodule') |
-            (self.dataset_raw['label'] == 'multihop') | (self.dataset_raw['label'] == 'neptune') |
-            (self.dataset_raw['label'] == 'nmap') | (self.dataset_raw['label'] == 'perl') |
-            (self.dataset_raw['label'] == 'phf') | (self.dataset_raw['label'] == 'pod') |
-            (self.dataset_raw['label'] == 'portsweep') | (self.dataset_raw['label'] == 'rootkit') |
-            (self.dataset_raw['label'] == 'satan') | (self.dataset_raw['label'] == 'smurf') |
-            (self.dataset_raw['label'] == 'spy') | (self.dataset_raw['label'] == 'teardrop') |
-            (self.dataset_raw['label'] == 'warezclient') | (self.dataset_raw['label'] == 'warezmaster')
-             ]
+            (self.dataset['label'] == 'normal'),
+            (self.dataset['label'] == 'back') | (self.dataset['label'] == 'buffer_overflow') |
+            (self.dataset['label'] == 'ftp_write') | (self.dataset['label'] == 'guess_passwd') |
+            (self.dataset['label'] == 'imap') | (self.dataset['label'] == 'ipsweep') |
+            (self.dataset['label'] == 'land') | (self.dataset['label'] == 'loadmodule') |
+            (self.dataset['label'] == 'multihop') | (self.dataset['label'] == 'neptune') |
+            (self.dataset['label'] == 'nmap') | (self.dataset['label'] == 'perl') |
+            (self.dataset['label'] == 'phf') | (self.dataset['label'] == 'pod') |
+            (self.dataset['label'] == 'portsweep') | (self.dataset['label'] == 'rootkit') |
+            (self.dataset['label'] == 'satan') | (self.dataset['label'] == 'smurf') |
+            (self.dataset['label'] == 'spy') | (self.dataset['label'] == 'teardrop') |
+            (self.dataset['label'] == 'warezclient') | (self.dataset['label'] == 'warezmaster')
+        ]
         choices = ['normal', 'intrusion']
-        self.dataset_raw['label_binary'] = np.select(conditions, choices, default='na')
+        self.dataset['label_binary'] = np.select(conditions, choices, default='na')
+
+    def set_attack_group(self):
+        conditions = [
+            (self.dataset['label'] == 'normal'),
+            (self.dataset['label'] == 'back') | (self.dataset['label'] == 'land') |
+            (self.dataset['label'] == 'neptune') | (self.dataset['label'] == 'pod') |
+            (self.dataset['label'] == 'smurf') | (self.dataset['label'] == 'teardrop'),
+            (self.dataset['label'] == 'buffer_overflow') | (self.dataset['label'] == 'loadmodule') |
+            (self.dataset['label'] == 'perl') | (self.dataset['label'] == 'rootkit'),
+            (self.dataset['label'] == 'ftp_write') | (self.dataset['label'] == 'guess_passwd') |
+            (self.dataset['label'] == 'imap') | (self.dataset['label'] == 'multihop') |
+            (self.dataset['label'] == 'phf') |  (self.dataset['label'] == 'spy') |
+            (self.dataset['label'] == 'warezclient') | (self.dataset['label'] == 'warezmaster'),
+            (self.dataset['label'] == 'ipsweep') | (self.dataset['label'] == 'nmap') |
+            (self.dataset['label'] == 'portsweep') | (self.dataset['label'] == 'satan')
+        ]
+        choices = ['normal', 'dos', 'u2r', 'r2l', 'probe']
+        self.dataset['attack_group'] = np.select(conditions, choices, default='na')
 
     def preprocess(self):
         self.filehandler = Filehandler()
-        self.dataset_raw = self.filehandler.read_csv(self.filehandler.data_raw_path)
+        self.dataset = self.filehandler.read_csv(self.filehandler.data_raw_path)
         self.clean_label()
         self.set_binary_label()
-        self.data_analysis()
+        self.set_attack_group()
+        self.data_discovery()
 
 
 
