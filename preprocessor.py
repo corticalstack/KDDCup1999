@@ -22,7 +22,7 @@ class Preprocessor:
         dataset.fillna('', inplace=True)
 
     def data_analysis(self):
-        print('_' * 80, "=== Dataset Info ===", sep='\n')
+        print('_' * 80, '=== Dataset Info ===', sep='\n')
         print('Shape {}'.format(self.dataset_raw.shape))
         print('\n', 'Features', self.dataset_raw.columns.values)
         for col in self.dataset_raw:
