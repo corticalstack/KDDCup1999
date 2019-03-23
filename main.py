@@ -5,6 +5,7 @@ import time
 from contextlib import contextmanager
 from filehandler import Filehandler
 from preprocessor import Preprocessor
+from modeller import Modeller
 
 
 @contextmanager
@@ -19,9 +20,14 @@ def process_dataset(filehandler, modeller, dataset_path):
 
 
 def main():
+    dataset = None
     filehandler = Filehandler()
+    modeller = Modeller()
     with timer('Preprocessor'):
         Preprocessor()
+    with timer('Modeller'):
+        modeller.score_baseline_rfc()
+
 
 
 if __name__ == '__main__':

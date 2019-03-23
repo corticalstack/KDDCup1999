@@ -9,6 +9,8 @@ class Filehandler:
     def __init__(self):
         self.path_data = 'data'
         self.file_raw_dataset = 'kddcup.data_10_percent'
+        self.file_dataset = 'processed_dataset'
+        self.file_target = 'target'
         self.file_scores = 'scores.csv'
         self.data_raw_path = None
         self.scores_path = None
@@ -31,6 +33,17 @@ class Filehandler:
             'dst_host_serror_rate', 'dst_host_srv_serror_rate', 'dst_host_rerror_rate', 'dst_host_srv_rerror_rate', 
             'label'])
         return dataset
+
+    def read_csv2(self, datapath):
+        logging.info('Reading file - {}'.format(datapath))
+        dataset = pd.read_csv(datapath)
+        return dataset
+
+    def read_csv3(self, datapath):
+        logging.info('Reading file - {}'.format(datapath))
+        dataset = pd.read_csv(datapath, skiprows=1)
+        return dataset
+
 
     def output_scores(self, scores):
         logging.info('Outputing scores file - {}'.format(self.scores_path))

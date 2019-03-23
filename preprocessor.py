@@ -4,31 +4,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from filehandler import Filehandler
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
 
 
 class Preprocessor:
 
     def __init__(self):
         self.dataset = None
+        self.target = None
         self.filehandler = None
         self.total_rows = None
         self.preprocess()
-
-    @staticmethod
-    def impute_numeric_feature_with_zero(dataset):
-        dataset.fillna(0, inplace=True)
-
-    @staticmethod
-    def impute_categorical_feature_with_blank(dataset):
-        dataset.fillna('', inplace=True)
 
     def core_analysis(self):
         print('--- Shape')
         print('\tRow count:\t', '{}'.format(self.total_rows))
         print('\tColumn count:\t', '{}'.format(self.dataset.shape[1]))
 
-        print('\n--- Row count by binary label')
-        series = self.dataset['label_binary'].value_counts()
+        print('\n--- Row count by target')
+        series = self.dataset['target'].value_counts()
         for idx, val in series.iteritems():
             print('\t{}: {} ({:6.3f}%)'.format(idx, val, ((val / self.total_rows) * 100)))
 
@@ -37,9 +32,9 @@ class Preprocessor:
         for idx, val in series.iteritems():
             print('\t{}: {} ({:6.3f}%)'.format(idx, val, ((val / self.total_rows) * 100)))
 
-        print('\n--- Row count by attack category/label')
-        df = self.dataset.groupby(['attack_category', 'label', ])[['label_binary']].count()
-        df = df.rename(columns={'label_binary': 'Count'})
+        print('\n--- Row count by attack category/target')
+        df = self.dataset.groupby(['attack_category', 'label', ])[['target']].count()
+        df = df.rename(columns={'target': 'Count'})
         df['Percent'] = (df['Count'] / self.total_rows) * 100
         df_flat = df.reset_index()
         print(df_flat)
@@ -74,7 +69,7 @@ class Preprocessor:
             (self.dataset['label'] == 'warezclient') | (self.dataset['label'] == 'warezmaster')
         ]
         choices = [0, 1]
-        self.dataset['label_binary'] = np.select(conditions, choices, default='na')
+        self.dataset['target'] = np.select(conditions, choices, default='na')
 
     def set_attack_group(self):
         conditions = [
@@ -96,7 +91,20 @@ class Preprocessor:
 
     def prepare_output_variant_01(self):
         print('prepare output')
-        self.dataset.drop('is_host_login', inplace=True, axis=1)
+        self.target = self.dataset['target']
+        cols = ['is_host_login', 'attack_category', 'label', 'target']
+        self.dataset = self.dataset.drop(columns=cols)
+        #self.dataset.drop('is_host_login', inplace=True, axis=1)
+
+        # One hot encode
+        self.dataset = pd.get_dummies(self.dataset, columns=['protocol_type', 'service', 'flag'], drop_first=True)
+
+        # Scale
+        sc_X = StandardScaler()
+        self.dataset = pd.DataFrame(sc_X.fit_transform(self.dataset), columns=self.dataset.columns)
+        print('finished')
+
+
 
     def corr(self):
         correlation = self.dataset.corr()
@@ -130,6 +138,8 @@ class Preprocessor:
 
         self.corr()
         self.prepare_output_variant_01()
+        self.dataset.to_csv(self.filehandler.file_dataset, index=False)
+        self.target.to_csv(self.filehandler.file_target, index=False)
 
 
 
