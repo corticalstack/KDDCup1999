@@ -1,67 +1,86 @@
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_predict, cross_val_score
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.wrappers.scikit_learn import KerasClassifier
 from filehandler import Filehandler
 
 
 class Model:
 
     def __init__(self):
-        self.dataset_train = None
-        self.target_train = None
-        self.dataset_test = None
-        self.target_test = None
-        self.test_size = 0.2
+        self.enabled = False
+        self.X_train = None
+        self.y_train = None
         self.random_state = 20
-        self.target_label = None
-        self.scores = []
-        self.score_count = 0
-        self.filehandler = None
-
-    def set_dataset(self):
-
-    def set_target(self):
-
-    def set_model(self):
-        self.set_model()
+        self.scores = None
+        self.predictions = None
 
     def get_confusion_matrix(self):
-        return confusion_matrix(y, self.predictions)
+        return confusion_matrix(self.y_train, self.predictions)
 
     def print_confusion_matrix(self):
         print(
             "Confusion matrix for {} - TN {}  FN {}  TP {}  FP {}".format('RFC', cm[0][0], cm[1][0],
                                                                              cm[1][1], cm[0][1]))
 
+    def set_dataset(self, folder, file):
+        filehandler = Filehandler()
+        self.X_train = filehandler.read_csv(folder, file + '_processed')
+        self.y_train = filehandler.read_csv(folder, file + '_target')
+
+    def fit(self):
+        self.model.fit(self.X_train, self.y_train)
+
+    def score(self):
+        self.scores = cross_val_score(self.model, self.X_train, self.y_train, cv=10, scoring='roc_auc')
+        print(self.scores)
+
+    def predict(self):
+        self.predictions = cross_val_predict(self.model, self.X_train, self.y_train, cv=10)
 
 
 class RandomForestClf(Model):
-
-    def set_model(self):
+    def __init__(self):
+        Model.__init__(self)
         self.model = RandomForestClassifier(random_state=self.random_state)
 
-    def fit_model(self):
-        self.model.fit(X, y)
 
-    def score_model(self):
-        scores = cross_val_score(self.model, X, y, cv=10, scoring='roc_auc')
-
-    def get_predictions(self):
-        self.predictions = cross_val_predict(self.model, X, y, cv=10)
+class DecisionTreeClf(Model):
+    def __init__(self):
+        Model.__init__(self)
+        self.model = DecisionTreeClassifier(random_state=self.random_state)
 
 
+class ANNPerceptronClf(Model):
+    def __init__(self):
+        Model.__init__(self)
+        self.enabled = True
+        self.model = KerasClassifier(build_fn=self.create_network, epochs=10, batch_size=100, verbose=0)
 
+    def create_network(self):
+        network = Sequential()
 
+        # Input layer with 9 inputs, hidden layer with 1 neuron
+        network.add(Dense(output_dim=1, init='uniform', activation='relu', input_dim=self.X_train.shape[1]))
 
-# Do I want to create a class called model that can
-# set the model name in __init__
-# fit the model
-# score the model
-# cross val the model
-# ie the general behaviour
-# I can then specialize ift for any specific model ie create subclases that customize the bits of behavours per model trype
-# Have a look at design patterns (frameworks) for Python
+        # Output layer - sigmoid good for binary classification
+        network.add(Dense(output_dim=1, init='uniform', activation='sigmoid'))
 
+        # Binary cross entropy good for binary classification
+        network.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
+        return network
 
+    def set_dataset(self, folder, file):
+        Model.set_dataset(self, folder, file)
+
+    def fit(self):
+        self.model.fit(self.X_train, self.y_train)
+
+    def predict(self):
+        self.predictions = self.model.predict(self.X_train)
+        self.predictions = (self.predictions > 0.5)
 

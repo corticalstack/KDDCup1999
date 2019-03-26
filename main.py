@@ -3,7 +3,8 @@ import time
 from contextlib import contextmanager
 from dataset import KDDCup1999
 from filehandler import Filehandler
-from modeller import Modeller
+from visualize import Visualize
+import importlib
 
 
 @contextmanager
@@ -16,7 +17,7 @@ def timer(title):
 def main():
     dataset = KDDCup1999()
     filehandler = Filehandler()
-    modeller = Modeller()
+    visualize = Visualize()
     with timer('Loading dataset'):
         dataset.dataset = filehandler.read_csv(dataset.config['path'], dataset.config['file'])
         dataset.set_columns()
@@ -36,8 +37,19 @@ def main():
         filehandler.write_csv(dataset.config['path'], dataset.config['file'] + '_processed', dataset.dataset)
         filehandler.write_csv(dataset.config['path'], dataset.config['file'] + '_target', dataset.target)
     with timer('Modeller'):
-        #think about builing new model or getting from db as an example
-        modeller.score_baseline_rfc()
+        model_module = importlib.import_module('model')
+        models = ['RandomForestClf', 'DecisionTreeClf', 'ANNPerceptronClf']
+        for m in models:
+            cls = getattr(model_module, m)
+            model = cls()
+            if not model.enabled:
+                continue
+            print('Processing {}'.format(m))
+            model.set_dataset(dataset.config['path'], dataset.config['file'])
+            model.fit()
+            model.score()
+            model.predict()
+            visualize.confusion_matrix(model.get_confusion_matrix(), m, dataset.config['target'])
 
 
 if __name__ == '__main__':

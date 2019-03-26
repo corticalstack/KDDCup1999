@@ -15,12 +15,6 @@ class Dataset:
     def set_target(self):
         self.target = self.dataset[self.config['target']]
 
-    def transform(self):
-        self.transform()
-
-    def discovery(self):
-        self.discovery()
-
     def shape(self):
         print('--- Shape')
         print('\tRow count:\t', '{}'.format(self.dataset.shape[0]))
@@ -68,6 +62,7 @@ class Dataset:
 
 class KDDCup1999(Dataset):
     def __init__(self):
+        Dataset.__init__(self)
         self.config = {'columns': ['duration', 'protocol_type', 'service', 'flag', 'src_bytes', 'dst_bytes', 'land',
                                    'wrong_fragment', 'urgent', 'hot', 'num_failed_logins', 'logged_in',
                                    'num_compromised', 'root_shell', 'su_attempted', 'num_root', 'num_file_creations',
