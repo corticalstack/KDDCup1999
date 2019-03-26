@@ -1,17 +1,10 @@
-# Author:   Jon-Paul Boyd
-# Date:     16/01/2018
-# IMAT5234  Applied Computational Intelligence - Mini Project
-# Customer Relationship Management - Predict churn, appetency and upselling on Orange dataset
-# Modeller
-
-import logging
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_predict, cross_val_score
 from filehandler import Filehandler
 
 
-class Modeller:
+class Model:
 
     def __init__(self):
         self.dataset_train = None
@@ -25,20 +18,38 @@ class Modeller:
         self.score_count = 0
         self.filehandler = None
 
-    def score_baseline_rfc(self):
-        self.filehandler = Filehandler()
-        X = self.filehandler.read_csv3(self.filehandler.file_dataset)
-        y = self.filehandler.read_csv2(self.filehandler.file_target)
-        clf = RandomForestClassifier(random_state=self.random_state)
-        clf.fit(X, y)
+    def set_dataset(self):
 
-        scores = cross_val_score(clf, X, y, cv=10, scoring='roc_auc')
-        predictions = cross_val_predict(clf, X, y, cv=10)
-        cm = confusion_matrix(y, predictions)
+    def set_target(self):
+
+    def set_model(self):
+        self.set_model()
+
+    def get_confusion_matrix(self):
+        return confusion_matrix(y, self.predictions)
+
+    def print_confusion_matrix(self):
         print(
             "Confusion matrix for {} - TN {}  FN {}  TP {}  FP {}".format('RFC', cm[0][0], cm[1][0],
                                                                              cm[1][1], cm[0][1]))
-        print('finished')
+
+
+
+class RandomForestClf(Model):
+
+    def set_model(self):
+        self.model = RandomForestClassifier(random_state=self.random_state)
+
+    def fit_model(self):
+        self.model.fit(X, y)
+
+    def score_model(self):
+        scores = cross_val_score(self.model, X, y, cv=10, scoring='roc_auc')
+
+    def get_predictions(self):
+        self.predictions = cross_val_predict(self.model, X, y, cv=10)
+
+
 
 
 

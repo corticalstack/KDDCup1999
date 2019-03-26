@@ -1,10 +1,8 @@
-import logging
-import pandas as pd
 from os import path
 import time
 from contextlib import contextmanager
+from dataset import KDDCup1999
 from filehandler import Filehandler
-from preprocessor import Preprocessor
 from modeller import Modeller
 
 
@@ -15,19 +13,31 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-def process_dataset(filehandler, modeller, dataset_path):
-    dataset = filehandler.read_csv(dataset_path)  # Reload dataset to ensure no scaling on scaling successive preds
-
-
 def main():
-    dataset = None
+    dataset = KDDCup1999()
     filehandler = Filehandler()
     modeller = Modeller()
-    with timer('Preprocessor'):
-        Preprocessor()
+    with timer('Loading dataset'):
+        dataset.dataset = filehandler.read_csv(dataset.config['path'], dataset.config['file'])
+        dataset.set_columns()
+    with timer('Transforming dataset'):
+        dataset.transform()
+    with timer('Dataset discovery'):
+        dataset.discovery()
+        dataset.drop_duplicates()
+        dataset.discovery()
+    with timer('Setting target'):
+        dataset.set_target()
+    with timer('Encoding dataset'):
+        dataset.drop_cols()
+        dataset.onehotencode()
+        dataset.scale()
+    with timer('Persisting transformed dataset and target'):
+        filehandler.write_csv(dataset.config['path'], dataset.config['file'] + '_processed', dataset.dataset)
+        filehandler.write_csv(dataset.config['path'], dataset.config['file'] + '_target', dataset.target)
     with timer('Modeller'):
+        #think about builing new model or getting from db as an example
         modeller.score_baseline_rfc()
-
 
 
 if __name__ == '__main__':

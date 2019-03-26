@@ -32,13 +32,24 @@ class Modeller:
         clf = RandomForestClassifier(random_state=self.random_state)
         clf.fit(X, y)
 
-        scores = cross_val_score(clf, X, y, cv=10, scoring='neg_mean_absolute_error')
+        scores = cross_val_score(clf, X, y, cv=10, scoring='roc_auc')
         predictions = cross_val_predict(clf, X, y, cv=10)
         cm = confusion_matrix(y, predictions)
         print(
             "Confusion matrix for {} - TN {}  FN {}  TP {}  FP {}".format('RFC', cm[0][0], cm[1][0],
                                                                              cm[1][1], cm[0][1]))
         print('finished')
+
+
+
+# Do I want to create a class called model that can
+# set the model name in __init__
+# fit the model
+# score the model
+# cross val the model
+# ie the general behaviour
+# I can then specialize ift for any specific model ie create subclases that customize the bits of behavours per model trype
+# Have a look at design patterns (frameworks) for Python
 
 
 
