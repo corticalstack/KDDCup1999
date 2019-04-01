@@ -1,10 +1,12 @@
 from os import path
-import time
 from contextlib import contextmanager
 from dataset import KDDCup1999
+from database import Database
 from filehandler import Filehandler
 from visualize import Visualize
 import importlib
+import time
+import pickle
 
 
 @contextmanager
@@ -16,6 +18,7 @@ def timer(title):
 
 def main():
     dataset = KDDCup1999()
+    database = Database()
     filehandler = Filehandler()
     visualize = Visualize()
     with timer('Loading dataset'):
@@ -29,6 +32,8 @@ def main():
         dataset.discovery()
     with timer('Setting target'):
         dataset.set_target()
+    with timer('Sampling'):
+        dataset.sample('attack_category', 'normal', 52)
     with timer('Encoding dataset'):
         dataset.drop_cols()
         dataset.onehotencode()
@@ -47,9 +52,29 @@ def main():
             print('Processing {}'.format(m))
             model.set_dataset(dataset.config['path'], dataset.config['file'])
             model.fit()
+            #model.apply_pca()
+
             model.score()
+            mdb_payload = {
+                "name": model.base['stext'],
+                "model": pickle.dumps(model.base['model']),
+                "scores": model.base['scores'].tolist()
+            }
+
+            model.mongo_id = database.insert_one('ml', 'models', mdb_payload)
             model.predict()
-            visualize.confusion_matrix(model.get_confusion_matrix(), m, dataset.config['target'])
+            model.base['cm'] = model.get_confusion_matrix()
+            mdb_filter = {"_id": model.mongo_id}
+            mdb_payload = {"$set":
+                         {"cm_tp": int(model.base['cm'][1][1]),
+                          "cm_tn": int(model.base['cm'][0][0]),
+                          "cm_fp": int(model.base['cm'][0][1]),
+                          "cm_fn": int(model.base['cm'][1][0]),
+                          "updatedAt": time.time()}}
+
+            database.update_one('ml', 'models', mdb_filter, mdb_payload)
+
+            visualize.confusion_matrix(model.base['cm'], m, dataset.config['target'])
 
 
 if __name__ == '__main__':
@@ -58,3 +83,33 @@ if __name__ == '__main__':
     logging.config.fileConfig(log_file_path)
     with timer('Full model run'):
         main()
+
+
+
+# import data
+
+# PREPROCESSING
+# feature engineering
+# feature selection
+# feature transformation
+# feature missing values
+# outlier handling
+# check variable types
+
+
+
+# MODEL ASSESSMENT / VALIDATE
+# validate partitioning
+# choose model metric
+# score models
+
+
+# MODEL/ ALGORITHM
+# algorithym from libraries
+# select model
+# tune hyper parameters
+# which algorithyms to run
+
+# collect actual results
+
+

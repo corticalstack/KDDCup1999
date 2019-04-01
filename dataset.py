@@ -8,6 +8,7 @@ class Dataset:
     def __init__(self):
         self.dataset = None
         self.target = None
+        self.attack_category = ['normal', 'dos', 'u2r', 'r2l', 'probe']
 
     def set_columns(self):
         self.dataset.columns = self.config['columns']
@@ -59,6 +60,9 @@ class Dataset:
         sc = StandardScaler()
         self.dataset = pd.DataFrame(sc.fit_transform(self.dataset), columns=self.dataset.columns)
 
+    def sample(self, level, by, n):
+        df_sample = self.dataset[(self.dataset[level] == by)].sample(n)
+        print(df_sample.shape)
 
 class KDDCup1999(Dataset):
     def __init__(self):
@@ -101,7 +105,7 @@ class KDDCup1999(Dataset):
         choices = [0, 1]
         self.dataset['target'] = np.select(conditions, choices, default='na')
 
-    def set_attack_group(self):
+    def set_attack_category(self):
         conditions = [
             (self.dataset['label'] == 'normal'),
             (self.dataset['label'] == 'back') | (self.dataset['label'] == 'land') |
@@ -116,13 +120,12 @@ class KDDCup1999(Dataset):
             (self.dataset['label'] == 'ipsweep') | (self.dataset['label'] == 'nmap') |
             (self.dataset['label'] == 'portsweep') | (self.dataset['label'] == 'satan')
         ]
-        choices = ['normal', 'dos', 'u2r', 'r2l', 'probe']
-        self.dataset['attack_category'] = np.select(conditions, choices, default='na')
+        self.dataset['attack_category'] = np.select(conditions, self.attack_category, default='na')
 
     def transform(self):
         self.clean()
         self.set_binary_label()
-        self.set_attack_group()
+        self.set_attack_category()
 
     def discovery(self):
         self.shape()
