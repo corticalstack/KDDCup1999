@@ -17,30 +17,33 @@ def timer(title):
 
 
 def main():
-    dataset = KDDCup1999()
+    ds = KDDCup1999()
     database = Database()
     filehandler = Filehandler()
     visualize = Visualize()
     with timer('Loading dataset'):
-        dataset.dataset = filehandler.read_csv(dataset.config['path'], dataset.config['file'])
-        dataset.set_columns()
+        ds.dataset = filehandler.read_csv(ds.config['path'], ds.config['file'])
+        ds.set_columns()
     with timer('Transforming dataset'):
-        dataset.transform()
+        ds.transform()
     with timer('Dataset discovery'):
-        dataset.discovery()
-        dataset.drop_duplicates()
-        dataset.discovery()
+        ds.discovery()
+        ds.drop_duplicates()
+        ds.discovery()
+    with timer('Linear Separation Tests'):
+        #ds.linear()
+        ds.linear_perceptron()
     with timer('Setting target'):
-        dataset.set_target()
+        ds.set_target()
     with timer('Sampling'):
-        dataset.sample('attack_category', 'normal', 52)
+        ds.sample('attack_category', 'normal', 52)
     with timer('Encoding dataset'):
-        dataset.drop_cols()
-        dataset.onehotencode()
-        dataset.scale()
+        ds.drop_cols()
+        ds.onehotencode()
+        ds.scale()
     with timer('Persisting transformed dataset and target'):
-        filehandler.write_csv(dataset.config['path'], dataset.config['file'] + '_processed', dataset.dataset)
-        filehandler.write_csv(dataset.config['path'], dataset.config['file'] + '_target', dataset.target)
+        filehandler.write_csv(ds.config['path'], ds.config['file'] + '_processed', ds.dataset)
+        filehandler.write_csv(ds.config['path'], ds.config['file'] + '_target', ds.target)
     with timer('Modeller'):
         model_module = importlib.import_module('model')
         models = ['RandomForestClf', 'DecisionTreeClf', 'ANNPerceptronClf']
@@ -50,7 +53,7 @@ def main():
             if not model.enabled:
                 continue
             print('Processing {}'.format(m))
-            model.set_dataset(dataset.config['path'], dataset.config['file'])
+            model.set_ds(ds.config['path'], ds.config['file'])
             model.fit()
             #model.apply_pca()
 
@@ -74,7 +77,7 @@ def main():
 
             database.update_one('ml', 'models', mdb_filter, mdb_payload)
 
-            visualize.confusion_matrix(model.base['cm'], m, dataset.config['target'])
+            visualize.confusion_matrix(model.base['cm'], m, ds.config['target'])
 
 
 if __name__ == '__main__':

@@ -81,7 +81,7 @@ class ANNPerceptronClf(Model):
     def create_network(self):
         network = Sequential()
 
-        # Input layer with 9 inputs, hidden layer with 1 neuron
+        # Input layer with inputs matching 0 axis of tensor, hidden layer with 1 neuron
         network.add(Dense(output_dim=1, init='uniform', activation='relu', input_dim=self.X_train.shape[1]))
 
         # Output layer - sigmoid good for binary classification

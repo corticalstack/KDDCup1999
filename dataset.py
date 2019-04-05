@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from pandas.plotting import scatter_matrix
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from scipy.spatial import ConvexHull
 
 
 class Dataset:
@@ -8,7 +11,6 @@ class Dataset:
     def __init__(self):
         self.dataset = None
         self.target = None
-        self.attack_category = ['normal', 'dos', 'u2r', 'r2l', 'probe']
 
     def set_columns(self):
         self.dataset.columns = self.config['columns']
@@ -51,7 +53,7 @@ class Dataset:
         self.dataset.drop_duplicates(keep='first', inplace=True)
 
     def drop_cols(self):
-        self.dataset = self.dataset.drop(columns=self.config['drop_cols'])
+        self.dataset.drop(columns=self.config['drop_cols'])
 
     def onehotencode(self):
         self.dataset = pd.get_dummies(self.dataset, columns=self.config['onehotencode_cols'], drop_first=True)
@@ -63,6 +65,128 @@ class Dataset:
     def sample(self, level, by, n):
         df_sample = self.dataset[(self.dataset[level] == by)].sample(n)
         print(df_sample.shape)
+
+    def linear(self):
+
+        from sklearn import preprocessing
+        le = preprocessing.LabelEncoder()
+        df_encode = self.dataset.iloc[:, 0:7]
+        #df_encode.drop(columns = ['is_host_login', 'num_outbound_cmds', 'attack_category', 'label', 'target'])
+        df_encode = df_encode.apply(le.fit_transform)
+        sc = StandardScaler()
+        mms = MinMaxScaler(feature_range=(0, 1))
+        df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
+        #scatter_matrix(df_encode.iloc[:, 0:4], figsize=(15, 11))
+        #plt.show()
+
+
+
+
+        print('df encode shape', df_encode.shape)
+        print('self dataset shape', self.dataset.shape)
+        df_encode = df_encode.set_index(self.dataset.index)
+        df_encode['target'] = self.dataset['target']
+        cdict = {0: 'red', 1: 'blue'}
+        import seaborn as sns
+        #sns.set(style="ticks")
+        #sns.pairplot(df_encode,  vars=df_encode.columns[:-1], hue="target", palette=cdict, height=5)
+        #plt.show()
+
+        #plt.clf()
+        #plt.figure(figsize = (10, 6))
+        #names = ['normal', 'attack']
+        #colors = ['b','r']
+        #label = (df_encode.target).astype(np.int)
+
+        #plt.title('Duration vs Protocol Type')
+        #plt.xlabel(self.dataset.columns[0])
+        #plt.ylabel(self.dataset.columns[1])
+        #cdict = {0: 'red', 1: 'blue'}
+        #for i in range(len(names)):
+        #    bucket = df_encode[df_encode['target'] == i]
+        #    bucket = bucket.iloc[:,[0,1]].values
+        #    plt.scatter(bucket[:, 0], bucket[:, 1], label=names[i], c = cdict[i])
+        #plt.legend()
+        #plt.show()
+
+        # Convex hull
+        plt.clf()
+        plt.figure(figsize=(10, 6))
+        names = ['normal', 'attack']
+        colors = ['b', 'r']
+        label = (df_encode.target).astype(np.int)
+        plt.title(self.dataset.columns[0] + ' vs ' + self.dataset.columns[5])
+        plt.xlabel(self.dataset.columns[0])
+        plt.ylabel(self.dataset.columns[5])
+        for i in range(len(names)):
+            bucket = df_encode[df_encode['target'] == i]
+            bucket = bucket.iloc[:, [0, 5]].values
+            hull = ConvexHull(bucket)
+            plt.scatter(bucket[:, 0], bucket[:, 1], label=names[i])
+            for j in hull.simplices:
+                plt.plot(bucket[j, 0], bucket[j, 1], colors[i])
+        plt.legend()
+        plt.show()
+
+    def linear_perceptron(self):
+        from sklearn import preprocessing
+        le = preprocessing.LabelEncoder()
+        df_encode = self.dataset.iloc[:, [0, 5]]
+        df_encode = df_encode.apply(le.fit_transform)
+        sc = StandardScaler()
+        df_encode = pd.DataFrame(sc.fit_transform(df_encode), columns=df_encode.columns)
+
+        print('df encode shape', df_encode.shape)
+        print('self dataset shape', self.dataset.shape)
+        df_encode = df_encode.set_index(self.dataset.index)
+        y = self.dataset['target']
+
+        from sklearn.linear_model import Perceptron
+        perceptron = Perceptron(random_state=0)
+        perceptron.fit(df_encode, y)
+        predicted = perceptron.predict(df_encode)
+
+        from sklearn.metrics import confusion_matrix
+        cm = confusion_matrix(y, predicted)
+
+        plt.clf()
+        plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Wistia)
+        classNames = ['normal', 'attack']
+        plt.title('Perceptron Confusion Matrix - Entire Data')
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        tick_marks = np.arange(len(classNames))
+        plt.xticks(tick_marks, classNames, rotation=45)
+        plt.yticks(tick_marks, classNames)
+        s = [['TN', 'FP'], ['FN', 'TP']]
+
+        for i in range(2):
+            for j in range(2):
+                plt.text(j, i, str(s[i][j]) + " = " + str(cm[i][j]))
+        plt.show()
+
+        from matplotlib.colors import ListedColormap
+        plt.clf()
+        X_set, y_set = df_encode, y
+        y_set = y_set.values
+        X_set = X_set.values
+        X1, X2 = np.meshgrid(np.arange(start=X_set[:, 0].min() - 1, stop=X_set[:, 0].max() + 1, step=0.01),
+                             np.arange(start=X_set[:, 1].min() - 1, stop=X_set[:, 1].max() + 1, step=0.01))
+        plt.contourf(X1, X2, perceptron.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
+                     alpha=0.75, cmap=ListedColormap(('navajowhite', 'darkkhaki')))
+        plt.xlim(X1.min(), X1.max())
+        plt.ylim(X2.min(), X2.max())
+        for i, j in enumerate(np.unique(y_set)):
+            plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],
+                        c=ListedColormap(('red', 'green'))(i), label=j)
+        plt.title('Perceptron Classifier (Decision boundary for Setosa vs the rest)')
+        plt.xlabel('Petal Length')
+        plt.ylabel('Petal Width')
+        plt.legend()
+        plt.show()
+
+    def linear_svc(self):
+        #https: // scikit - learn.org / stable / auto_examples / svm / plot_iris.html
 
 class KDDCup1999(Dataset):
     def __init__(self):
@@ -81,8 +205,9 @@ class KDDCup1999(Dataset):
                        'file': 'kddcup.data_10_percent',
                        'target': 'target',
                        'level_01': ['attack_category', 'label'],
-                       'drop_cols': ['is_host_login', 'attack_category', 'label', 'target'],
-                       'onehotencode_cols': ['protocol_type', 'service', 'flag']}
+                       'drop_cols': ['is_host_login', 'num_outbound_cmds', 'attack_category', 'label', 'target'],
+                       'onehotencode_cols': ['protocol_type', 'service', 'flag'],
+                       'attack_category': ['normal', 'dos', 'u2r', 'r2l', 'probe']}
 
     def clean(self):
         self.dataset['label'] = self.dataset['label'].str.rstrip('.')
@@ -103,7 +228,9 @@ class KDDCup1999(Dataset):
             (self.dataset['label'] == 'warezclient') | (self.dataset['label'] == 'warezmaster')
         ]
         choices = [0, 1]
-        self.dataset['target'] = np.select(conditions, choices, default='na')
+        self.dataset['target'] = np.select(conditions, choices, default=0)
+
+        print('target type', self.dataset.target.dtype)
 
     def set_attack_category(self):
         conditions = [
@@ -120,7 +247,7 @@ class KDDCup1999(Dataset):
             (self.dataset['label'] == 'ipsweep') | (self.dataset['label'] == 'nmap') |
             (self.dataset['label'] == 'portsweep') | (self.dataset['label'] == 'satan')
         ]
-        self.dataset['attack_category'] = np.select(conditions, self.attack_category, default='na')
+        self.dataset['attack_category'] = np.select(conditions, self.config['attack_category'], default='na')
 
     def transform(self):
         self.clean()
