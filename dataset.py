@@ -42,6 +42,12 @@ class Dataset:
         for col in self.dataset:
             print('\t{} ({})'.format(col, len(self.dataset[col].unique())))
 
+    def column_zero_count(self):
+        print('\n--- Column zero count')
+        for col in self.dataset:
+            count = (self.dataset[col] == 0).sum()
+            print('\t{} {} ({:6.3f}%)'.format(col, count, (count / self.dataset.shape[0]) * 100))
+
     def duplicates(self, level):
         print('\n--- Duplicates by {}'.format(level))
         df = self.dataset.groupby(self.dataset.columns.tolist()).size().reset_index(name='duplicates')
@@ -187,6 +193,123 @@ class Dataset:
 
     def linear_svc(self):
         #https: // scikit - learn.org / stable / auto_examples / svm / plot_iris.html
+        from sklearn import preprocessing
+        le = preprocessing.LabelEncoder()
+        df_encode = self.dataset.iloc[:, [0, 5]]
+        df_encode = df_encode.apply(le.fit_transform)
+        sc = StandardScaler()
+        df_encode = pd.DataFrame(sc.fit_transform(df_encode), columns=df_encode.columns)
+        y = self.dataset['target']
+
+        from sklearn.svm import SVC
+        svm = SVC(C=1.0, kernel='linear', random_state=0)
+        svm.fit(df_encode, y)
+
+        predicted = svm.predict(df_encode)
+
+        from sklearn.metrics import confusion_matrix
+        cm = confusion_matrix(y, predicted)
+
+        from matplotlib.colors import ListedColormap
+        plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Wistia)
+        classNames = ['normal', 'attack']
+        plt.title('SVM Linear Kernel Confusion Matrix - Setosa')
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        tick_marks = np.arange(len(classNames))
+        plt.xticks(tick_marks, classNames, rotation=45)
+        plt.yticks(tick_marks, classNames)
+        s = [['TN', 'FP'], ['FN', 'TP']]
+        plt.show()
+
+        for i in range(2):
+            for j in range(2):
+                plt.text(j, i, str(s[i][j]) + " = " + str(cm[i][j]))
+
+        plt.clf()
+        X_set, y_set = df_encode, y
+        y_set = y_set.values
+        X_set = X_set.values
+        X1, X2 = np.meshgrid(np.arange(start=X_set[:, 0].min() - 1, stop=X_set[:, 0].max() + 1, step=0.01),
+                             np.arange(start=X_set[:, 1].min() - 1, stop=X_set[:, 1].max() + 1, step=0.01))
+        plt.contourf(X1, X2, svm.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
+                     alpha=0.75, cmap=ListedColormap(('navajowhite', 'darkkhaki')))
+        plt.xlim(X1.min(), X1.max())
+        plt.ylim(X2.min(), X2.max())
+        for i, j in enumerate(np.unique(y_set)):
+            plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],
+                        c=ListedColormap(('red', 'green'))(i), label=j)
+        plt.title('Perceptron Classifier (Decision boundary for Setosa vs the rest)')
+        plt.xlabel('Petal Length')
+        plt.ylabel('Petal Width')
+        plt.legend()
+        plt.show()
+
+    def cluster(self):
+        from sklearn.decomposition import PCA
+
+        pca = PCA(n_components=3)
+        from sklearn import preprocessing
+        le = preprocessing.LabelEncoder()
+        df_encode = self.dataset.iloc[:, :-3]
+        df_encode = df_encode.apply(le.fit_transform)
+        sc = StandardScaler()
+        df_encode = pd.DataFrame(sc.fit_transform(df_encode), columns=df_encode.columns)
+
+        df_encode = pca.fit_transform(df_encode)
+
+        from sklearn.cluster import KMeans
+
+        kmeans = KMeans(n_clusters=5)
+        kmeans.fit(df_encode)
+        print(kmeans.cluster_centers_)
+        y_km = kmeans.fit_predict(df_encode)
+        C = kmeans.cluster_centers_
+        plt.scatter(df_encode[y_km == 0, 0], df_encode[y_km == 0, 1], s=100, c='red')
+        plt.scatter(df_encode[y_km == 1, 0], df_encode[y_km == 1, 1], s=100, c='black')
+        plt.scatter(df_encode[y_km == 2, 0], df_encode[y_km == 2, 1], s=100, c='blue')
+        plt.scatter(df_encode[y_km == 3, 0], df_encode[y_km == 3, 1], s=100, c='cyan')
+        plt.scatter(df_encode[y_km == 4, 0], df_encode[y_km == 4, 1], s=50, c='green')
+        plt.show()
+
+    def boxplot(self):
+        import seaborn as sns
+        from sklearn import preprocessing
+        from sklearn.preprocessing import MinMaxScaler
+        from sklearn.preprocessing import minmax_scale
+        from sklearn.preprocessing import MaxAbsScaler
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.preprocessing import RobustScaler
+        from sklearn.preprocessing import Normalizer
+        from sklearn.preprocessing import QuantileTransformer
+        from sklearn.preprocessing import PowerTransformer
+
+        le = preprocessing.LabelEncoder()
+        df_encode = self.dataset.iloc[:, :-1]
+        df_encode = df_encode.apply(le.fit_transform)
+        sc = StandardScaler()
+        mms = MinMaxScaler()
+        df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
+        df_encode['target'] = self.dataset['target']
+        df_encode = df_encode.set_index(self.dataset.index)
+
+        for col in df_encode.columns:
+            sns.boxplot(x='target', y=df_encode[col], data=df_encode,
+                     palette="vlag")
+        #sns.swarmplot(x="target", y=df_encode['duration'], data=df_encode,
+        #              size=2, color=".3", linewidth=0)
+            plt.show()
+
+    def outliers(self):
+        self.dataset.describe()
+        for col in self.dataset.columns:
+            if self.dataset[col].dtype == np.float64 or self.dataset[col].dtype == np.int64:
+                threshold = self.dataset[col].max() * 0.95
+                outliers = self.dataset[(self.dataset[col] > 50) & (self.dataset[col] > threshold)]
+                if (not outliers.empty) and (len(outliers) < (self.dataset.shape[0] * 0.0001)):
+                        print('For column {} deleting {} rows over value {}'.format(col, len(outliers), threshold))
+                        self.dataset = pd.concat([self.dataset, outliers]).drop_duplicates(keep=False)
+
 
 class KDDCup1999(Dataset):
     def __init__(self):
@@ -260,4 +383,5 @@ class KDDCup1999(Dataset):
         self.row_count_by_target('attack_category')
         self.row_target_count_by_group(self.config['level_01'], [self.config['target']])
         self.column_unique_value_count()
+        self.column_zero_count()
         self.duplicates(self.config['level_01'])

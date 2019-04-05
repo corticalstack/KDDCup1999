@@ -32,7 +32,11 @@ def main():
         ds.discovery()
     with timer('Linear Separation Tests'):
         #ds.linear()
-        ds.linear_perceptron()
+        #ds.linear_perceptron()
+        #ds.linear_svc()
+        #ds.cluster()
+        #ds.boxplot()
+        ds.outliers()
     with timer('Setting target'):
         ds.set_target()
     with timer('Sampling'):
