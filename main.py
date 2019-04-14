@@ -34,9 +34,13 @@ def main():
         #ds.linear()
         #ds.linear_perceptron()
         #ds.linear_svc()
-        #ds.cluster()
+        ds.cluster()
         #ds.boxplot()
-        ds.outliers()
+        #ds.outliers()
+        #ds.disto()
+        #ds.heatmap()
+        #ds.standardized_data()
+        ds.feature_selection_univariate()
     with timer('Setting target'):
         ds.set_target()
     with timer('Sampling'):

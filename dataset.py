@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 from pandas.plotting import scatter_matrix
+import seaborn as sns
+from scipy.stats import norm
+from scipy import stats
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from scipy.spatial import ConvexHull
@@ -11,6 +14,7 @@ class Dataset:
     def __init__(self):
         self.dataset = None
         self.target = None
+        self.correlation = None
 
     def set_columns(self):
         self.dataset.columns = self.config['columns']
@@ -19,9 +23,42 @@ class Dataset:
         self.target = self.dataset[self.config['target']]
 
     def shape(self):
-        print('--- Shape')
+        print('\n--- Shape')
         print('\tRow count:\t', '{}'.format(self.dataset.shape[0]))
         print('\tColumn count:\t', '{}'.format(self.dataset.shape[1]))
+
+    def column_statistics(self):
+        print('\n--- Column Stats')
+        for col in self.dataset:
+            self.column_stats[col + '_dtype'] = self.dataset[col].dtype
+            self.column_stats[col + '_zero_num'] = (self.dataset[col] == 0).sum()
+            self.column_stats[col + '_zero_pct'] = (((self.dataset[col] == 0).sum() / self.dataset.shape[0]) * 100)
+            self.column_stats[col + '_nunique'] = (self.dataset[col] == 0).nunique()
+            self.column_stats[col + '_min'] = (self.dataset[col] == 0).min()
+            self.column_stats[col + '_mean'] = (self.dataset[col] == 0).mean()
+            self.column_stats[col + '_quantile_25'] = (self.dataset[col] == 0).quantile(.25)
+            self.column_stats[col + '_quantile_50'] = (self.dataset[col] == 0).quantile(.50)
+            self.column_stats[col + '_quantile_75'] = (self.dataset[col] == 0).quantile(.75)
+            self.column_stats[col + '_max'] = (self.dataset[col] == 0).max()
+            self.column_stats[col + '_std'] = (self.dataset[col] == 0).std()
+            self.column_stats[col + '_skew'] = (self.dataset[col] == 0).skew()
+            self.column_stats[col + '_kurt'] = (self.dataset[col] == 0).kurt()
+
+            print('\n- {} ({})'.format(col, self.column_stats[col + '_dtype']))
+            print('\tzero {} ({:.2f}%)'.format(self.column_stats[col + '_zero_num'],
+                                               self.column_stats[col + '_zero_pct']))
+
+            print('\tdistinct {}'.format(self.column_stats[col + '_nunique']))
+            if self.dataset[col].dtype != object:
+                print('\tmin {}'.format(self.column_stats[col + '_min']))
+                print('\tmean {:.3f}'.format(self.column_stats[col + '_mean']))
+                print('\t25% {:.3f}'.format(self.column_stats[col + '_quantile_25']))
+                print('\t50% {:.3f}'.format(self.column_stats[col + '_quantile_50']))
+                print('\t75% {:.3f}'.format(self.column_stats[col + '_quantile_75']))
+                print('\tmax {}'.format(self.column_stats[col + '_max']))
+                print('\tstd {:.3f}'.format(self.column_stats[col + '_std']))
+                print('\tskew {:.3f}'.format(self.column_stats[col + '_skew']))
+                print('\tkurt {:.3f}'.format(self.column_stats[col + '_kurt']))
 
     def row_count_by_target(self, target):
         print('\n--- Row count by {}'.format(target))
@@ -37,18 +74,7 @@ class Dataset:
         df_flat = df.reset_index()
         print(df_flat)
 
-    def column_unique_value_count(self):
-        print('\n--- Column unique value count')
-        for col in self.dataset:
-            print('\t{} ({})'.format(col, len(self.dataset[col].unique())))
-
-    def column_zero_count(self):
-        print('\n--- Column zero count')
-        for col in self.dataset:
-            count = (self.dataset[col] == 0).sum()
-            print('\t{} {} ({:6.3f}%)'.format(col, count, (count / self.dataset.shape[0]) * 100))
-
-    def duplicates(self, level):
+    def show_duplicates(self, level):
         print('\n--- Duplicates by {}'.format(level))
         df = self.dataset.groupby(self.dataset.columns.tolist()).size().reset_index(name='duplicates')
         df['duplicates'] = df['duplicates'] - 1
@@ -58,8 +84,10 @@ class Dataset:
     def drop_duplicates(self):
         self.dataset.drop_duplicates(keep='first', inplace=True)
 
-    def drop_cols(self):
-        self.dataset.drop(columns=self.config['drop_cols'])
+    def drop_cols(self, cols):
+        print('\n--- Dropping columns')
+        print(cols)
+        self.dataset.drop(columns=cols)
 
     def onehotencode(self):
         self.dataset = pd.get_dummies(self.dataset, columns=self.config['onehotencode_cols'], drop_first=True)
@@ -300,8 +328,9 @@ class Dataset:
         #              size=2, color=".3", linewidth=0)
             plt.show()
 
-    def outliers(self):
-        self.dataset.describe()
+    # Consider data only less than 95% of max to exlude extreme outliers
+    def drop_outliers(self):
+        print('\n--- Dropping Outliers')
         for col in self.dataset.columns:
             if self.dataset[col].dtype == np.float64 or self.dataset[col].dtype == np.int64:
                 threshold = self.dataset[col].max() * 0.95
@@ -309,6 +338,95 @@ class Dataset:
                 if (not outliers.empty) and (len(outliers) < (self.dataset.shape[0] * 0.0001)):
                         print('For column {} deleting {} rows over value {}'.format(col, len(outliers), threshold))
                         self.dataset = pd.concat([self.dataset, outliers]).drop_duplicates(keep=False)
+
+    def disto(self):
+        for col in self.dataset.columns:
+            if self.dataset[col].dtype == np.float64 or self.dataset[col].dtype == np.int64:
+                sns.distplot(self.dataset[col])
+                plt.show()
+
+    def correlation_heatmap(self):
+        self.correlation = self.dataset.corr()
+        fig, ax = plt.subplots(figsize=(30, 30))
+        colormap = sns.diverging_palette(220, 10, as_cmap=True)
+
+        dropSelf = np.zeros_like(self.correlation) # Drop self-correlations
+        dropSelf[np.triu_indices_from(dropSelf)] = True
+        sns.heatmap(self.correlation, cmap=colormap, annot=True, fmt=".2f", mask=dropSelf)
+        plt.xticks(range(len(self.correlation.columns)), self.correlation.columns)
+        plt.yticks(range(len(self.correlation.columns)), self.correlation.columns)
+        plt.savefig(fname='viz/' + 'Correlation - Heatmap - Top 20', dpi=300, format='png')
+        plt.show()
+
+    def standardized_data(self):
+        for col in self.dataset.columns:
+            if self.dataset[col].dtype == np.float64 or self.dataset[col].dtype == np.int64:
+                scaled = StandardScaler().fit_transform((self.dataset[col][:, np.newaxis]))
+                low_range = scaled[scaled[:, 0].argsort()][:10]
+                high_range = scaled[scaled[:, 0].argsort()][-10:]
+                print('outer range (low) of the distribution for {}'.format(col))
+                print(low_range)
+                print('\nouter range (high) of the distribution for {}'.format(col))
+                print(high_range)
+
+
+    def feature_selection_univariate(self):
+        from sklearn.feature_selection import SelectKBest
+        from sklearn.feature_selection import chi2
+
+        from sklearn import preprocessing
+        le = preprocessing.LabelEncoder()
+        df_encode = self.dataset.iloc[:, :-3]
+        df_encode = df_encode.apply(le.fit_transform)
+        sc = StandardScaler()
+        mms = MinMaxScaler()
+        df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
+
+        array1 = df_encode.values
+        array2 = self.dataset['target'].values
+        X = array1
+        Y = array2
+        # feature extraction
+        test = SelectKBest(score_func=chi2, k=4)
+        fit = test.fit(X, Y)
+        # summarize scores
+        np.set_printoptions(precision=3)
+        print(fit.scores_)
+        features = fit.transform(X)
+        # summarize selected features
+        print(features[0:5, :])
+        cols = test.get_support()
+        new = df_encode.columns[cols]
+        print(new)
+
+    def feature_selection_univariate(self):
+        from sklearn.feature_selection import SelectKBest
+        from sklearn.feature_selection import chi2
+
+        from sklearn import preprocessing
+        le = preprocessing.LabelEncoder()
+        df_encode = self.dataset.iloc[:, :-3]
+        df_encode = df_encode.apply(le.fit_transform)
+        sc = StandardScaler()
+        mms = MinMaxScaler()
+        df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
+
+        array1 = df_encode.values
+        array2 = self.dataset['target'].values
+        X = array1
+        Y = array2
+        # feature extraction
+        test = SelectKBest(score_func=chi2, k=4)
+        fit = test.fit(X, Y)
+        # summarize scores
+        np.set_printoptions(precision=3)
+        print(fit.scores_)
+        features = fit.transform(X)
+        # summarize selected features
+        print(features[0:5, :])
+        cols = test.get_support()
+        new = df_encode.columns[cols]
+        print(new)
 
 
 class KDDCup1999(Dataset):
@@ -328,9 +446,10 @@ class KDDCup1999(Dataset):
                        'file': 'kddcup.data_10_percent',
                        'target': 'target',
                        'level_01': ['attack_category', 'label'],
-                       'drop_cols': ['is_host_login', 'num_outbound_cmds', 'attack_category', 'label', 'target'],
+                       'drop_cols_01': ['is_host_login', 'num_outbound_cmds', 'attack_category', 'label', 'target'],
                        'onehotencode_cols': ['protocol_type', 'service', 'flag'],
                        'attack_category': ['normal', 'dos', 'u2r', 'r2l', 'probe']}
+        self.column_stats = {}
 
     def clean(self):
         self.dataset['label'] = self.dataset['label'].str.rstrip('.')
@@ -352,8 +471,6 @@ class KDDCup1999(Dataset):
         ]
         choices = [0, 1]
         self.dataset['target'] = np.select(conditions, choices, default=0)
-
-        print('target type', self.dataset.target.dtype)
 
     def set_attack_category(self):
         conditions = [
@@ -377,11 +494,30 @@ class KDDCup1999(Dataset):
         self.set_binary_label()
         self.set_attack_category()
 
+    def evaluate_sparse_features(self, engineer=False):
+        print('\n--- Evaluating sparse features')
+        for col in self.dataset.columns:
+            key = col + '_zero_pct'
+            if key in self.column_stats:
+                if self.column_stats[key] >= 99:
+                    print('\n{} {:.3f}%'.format(col, self.column_stats[key]))
+                    self.row_target_count_by_group(['label', 'attack_category', col], ['label'])
+
+        # Handcrafted engineering after column evaluation
+        if engineer:
+            # Col land - 19 of 20 rows land=1 for attack_category=land, set rare occurrence to 0 (data quality issue?)
+            self.dataset.loc[self.dataset['label'] == 'normal', 'land'] = 0
+
+            # Col urgent - rare and appears noisy, not signaling any particular attack type, remove
+            # Col su_attempted - rare, occurs only once for intrusion and few times for normal, remove
+            self.drop_cols(['urgent', 'su_attempted'])
+
+
     def discovery(self):
-        self.shape()
+        self.column_statistics()
         self.row_count_by_target(self.config['target'])
         self.row_count_by_target('attack_category')
         self.row_target_count_by_group(self.config['level_01'], [self.config['target']])
-        self.column_unique_value_count()
-        self.column_zero_count()
-        self.duplicates(self.config['level_01'])
+
+
+
