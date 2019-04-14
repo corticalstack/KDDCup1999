@@ -30,7 +30,7 @@ class Filehandler:
 
     def write_csv(self, folder, file, df):
         full_path = path.join(folder, file)
-        df.to_csv(full_path, header=False, index=False)
+        df.to_csv(full_path, header=True, index=False)
 
     def output_scores(self, scores):
         logging.info('Outputing scores file - {}'.format(self.scores_path))

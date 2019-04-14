@@ -1,12 +1,5 @@
 import numpy as np
 import pandas as pd
-from pandas.plotting import scatter_matrix
-import seaborn as sns
-from scipy.stats import norm
-from scipy import stats
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from scipy.spatial import ConvexHull
 
 
 class Dataset:
@@ -16,6 +9,9 @@ class Dataset:
         self.target = None
         self.column_stats = {}
         self.corr_threshold = 0.80
+
+    def discovery(self):
+        self.column_statistics()
 
     def set_columns(self):
         self.dataset.columns = self.config['columns']
@@ -35,22 +31,23 @@ class Dataset:
             self.column_stats[col + '_zero_num'] = (self.dataset[col] == 0).sum()
             self.column_stats[col + '_zero_pct'] = (((self.dataset[col] == 0).sum() / self.dataset.shape[0]) * 100)
             self.column_stats[col + '_nunique'] = (self.dataset[col] == 0).nunique()
-            self.column_stats[col + '_min'] = (self.dataset[col] == 0).min()
-            self.column_stats[col + '_mean'] = (self.dataset[col] == 0).mean()
-            self.column_stats[col + '_quantile_25'] = (self.dataset[col] == 0).quantile(.25)
-            self.column_stats[col + '_quantile_50'] = (self.dataset[col] == 0).quantile(.50)
-            self.column_stats[col + '_quantile_75'] = (self.dataset[col] == 0).quantile(.75)
-            self.column_stats[col + '_max'] = (self.dataset[col] == 0).max()
-            self.column_stats[col + '_std'] = (self.dataset[col] == 0).std()
-            self.column_stats[col + '_skew'] = (self.dataset[col] == 0).skew()
-            self.column_stats[col + '_kurt'] = (self.dataset[col] == 0).kurt()
 
             print('\n- {} ({})'.format(col, self.column_stats[col + '_dtype']))
             print('\tzero {} ({:.2f}%)'.format(self.column_stats[col + '_zero_num'],
                                                self.column_stats[col + '_zero_pct']))
-
             print('\tdistinct {}'.format(self.column_stats[col + '_nunique']))
+
+            # Numerical features
             if self.dataset[col].dtype != object:
+                self.column_stats[col + '_min'] = (self.dataset[col] == 0).min()
+                self.column_stats[col + '_mean'] = (self.dataset[col] == 0).mean()
+                self.column_stats[col + '_quantile_25'] = (self.dataset[col] == 0).quantile(.25)
+                self.column_stats[col + '_quantile_50'] = (self.dataset[col] == 0).quantile(.50)
+                self.column_stats[col + '_quantile_75'] = (self.dataset[col] == 0).quantile(.75)
+                self.column_stats[col + '_max'] = (self.dataset[col] == 0).max()
+                self.column_stats[col + '_std'] = (self.dataset[col] == 0).std()
+                self.column_stats[col + '_skew'] = (self.dataset[col] == 0).skew()
+                self.column_stats[col + '_kurt'] = (self.dataset[col] == 0).kurt()
                 print('\tmin {}'.format(self.column_stats[col + '_min']))
                 print('\tmean {:.3f}'.format(self.column_stats[col + '_mean']))
                 print('\t25% {:.3f}'.format(self.column_stats[col + '_quantile_25']))
@@ -90,46 +87,6 @@ class Dataset:
         print(cols)
         self.dataset.drop(columns=cols, inplace=True)
 
-    def onehotencode(self):
-        self.dataset = pd.get_dummies(self.dataset, columns=self.config['onehotencode_cols'], drop_first=True)
-
-    def scale(self):
-        sc = StandardScaler()
-        self.dataset = pd.DataFrame(sc.fit_transform(self.dataset), columns=self.dataset.columns)
-
-    def sample(self, level, by, n):
-        df_sample = self.dataset[(self.dataset[level] == by)].sample(n)
-        print(df_sample.shape)
-
-
-    def boxplot(self):
-        import seaborn as sns
-        from sklearn import preprocessing
-        from sklearn.preprocessing import MinMaxScaler
-        from sklearn.preprocessing import minmax_scale
-        from sklearn.preprocessing import MaxAbsScaler
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.preprocessing import RobustScaler
-        from sklearn.preprocessing import Normalizer
-        from sklearn.preprocessing import QuantileTransformer
-        from sklearn.preprocessing import PowerTransformer
-
-        le = preprocessing.LabelEncoder()
-        df_encode = self.dataset.iloc[:, :-1]
-        df_encode = df_encode.apply(le.fit_transform)
-        sc = StandardScaler()
-        mms = MinMaxScaler()
-        df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
-        df_encode['target'] = self.dataset['target']
-        df_encode = df_encode.set_index(self.dataset.index)
-
-        for col in df_encode.columns:
-            sns.boxplot(x='target', y=df_encode[col], data=df_encode,
-                     palette="vlag")
-        #sns.swarmplot(x="target", y=df_encode['duration'], data=df_encode,
-        #              size=2, color=".3", linewidth=0)
-            plt.show()
-
     # Consider data only less than 95% of max to exlude extreme outliers
     def drop_outliers(self):
         print('\n--- Dropping Outliers')
@@ -138,8 +95,8 @@ class Dataset:
                 threshold = self.dataset[col].max() * 0.95
                 outliers = self.dataset[(self.dataset[col] > 50) & (self.dataset[col] > threshold)]
                 if (not outliers.empty) and (len(outliers) < (self.dataset.shape[0] * 0.0001)):
-                        print('For column {} deleting {} rows over value {}'.format(col, len(outliers), threshold))
-                        self.dataset = pd.concat([self.dataset, outliers]).drop_duplicates(keep=False)
+                    print('For column {} deleting {} rows over value {}'.format(col, len(outliers), threshold))
+                    self.dataset = pd.concat([self.dataset, outliers]).drop_duplicates(keep=False)
 
     def drop_highly_correlated(self):
         corr = self.dataset.corr().abs()
@@ -149,76 +106,6 @@ class Dataset:
         cols_to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] >=
                                                                            self.corr_threshold)]
         self.drop_cols(cols_to_drop)
-
-    def standardized_data(self):
-        for col in self.dataset.columns:
-            if self.dataset[col].dtype == np.float64 or self.dataset[col].dtype == np.int64:
-                scaled = StandardScaler().fit_transform((self.dataset[col][:, np.newaxis]))
-                low_range = scaled[scaled[:, 0].argsort()][:10]
-                high_range = scaled[scaled[:, 0].argsort()][-10:]
-                print('outer range (low) of the distribution for {}'.format(col))
-                print(low_range)
-                print('\nouter range (high) of the distribution for {}'.format(col))
-                print(high_range)
-
-
-    def feature_selection_univariate(self):
-        from sklearn.feature_selection import SelectKBest
-        from sklearn.feature_selection import chi2
-
-        from sklearn import preprocessing
-        le = preprocessing.LabelEncoder()
-        df_encode = self.dataset.iloc[:, :-3]
-        df_encode = df_encode.apply(le.fit_transform)
-        sc = StandardScaler()
-        mms = MinMaxScaler()
-        df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
-
-        array1 = df_encode.values
-        array2 = self.dataset['target'].values
-        X = array1
-        Y = array2
-        # feature extraction
-        test = SelectKBest(score_func=chi2, k=4)
-        fit = test.fit(X, Y)
-        # summarize scores
-        np.set_printoptions(precision=3)
-        print(fit.scores_)
-        features = fit.transform(X)
-        # summarize selected features
-        print(features[0:5, :])
-        cols = test.get_support()
-        new = df_encode.columns[cols]
-        print(new)
-
-    def feature_selection_univariate(self):
-        from sklearn.feature_selection import SelectKBest
-        from sklearn.feature_selection import chi2
-
-        from sklearn import preprocessing
-        le = preprocessing.LabelEncoder()
-        df_encode = self.dataset.iloc[:, :-3]
-        df_encode = df_encode.apply(le.fit_transform)
-        sc = StandardScaler()
-        mms = MinMaxScaler()
-        df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
-
-        array1 = df_encode.values
-        array2 = self.dataset['target'].values
-        X = array1
-        Y = array2
-        # feature extraction
-        test = SelectKBest(score_func=chi2, k=4)
-        fit = test.fit(X, Y)
-        # summarize scores
-        np.set_printoptions(precision=3)
-        print(fit.scores_)
-        features = fit.transform(X)
-        # summarize selected features
-        print(features[0:5, :])
-        cols = test.get_support()
-        new = df_encode.columns[cols]
-        print(new)
 
 
 class KDDCup1999(Dataset):
@@ -238,10 +125,13 @@ class KDDCup1999(Dataset):
                        'file': 'kddcup.data_10_percent',
                        'target': 'target',
                        'level_01': ['attack_category', 'label'],
-                       'drop_cols_01': ['is_host_login', 'num_outbound_cmds', 'attack_category', 'label', 'target'],
+                       'drop_cols_01': ['is_host_login', 'num_outbound_cmds', 'label', 'target'],
+                       'drop_cols_02': ['attack_category'],
                        'onehotencode_cols': ['protocol_type', 'service', 'flag'],
-                       'attack_category': ['normal', 'dos', 'u2r', 'r2l', 'probe']}
-        self.column_stats = {}
+                       'attack_category': ['normal', 'dos', 'u2r', 'r2l', 'probe'],
+                       'pairplot_cols': ['duration', 'dst_host_diff_srv_rate', 'dst_host_srv_count', 'logged_in',
+                                         'serror_rate', 'count'],
+                       'pairplot_target': 'target'}
 
     def clean(self):
         self.dataset['label'] = self.dataset['label'].str.rstrip('.')
@@ -304,12 +194,8 @@ class KDDCup1999(Dataset):
             # Col su_attempted - rare, occurs only once for intrusion and few times for normal, remove
             self.drop_cols(['urgent', 'su_attempted'])
 
-
     def discovery(self):
-        self.column_statistics()
+        Dataset.column_statistics(self)
         self.row_count_by_target(self.config['target'])
         self.row_count_by_target('attack_category')
         self.row_target_count_by_group(self.config['level_01'], [self.config['target']])
-
-
-
