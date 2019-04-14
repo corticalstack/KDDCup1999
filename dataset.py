@@ -14,7 +14,8 @@ class Dataset:
     def __init__(self):
         self.dataset = None
         self.target = None
-        self.correlation = None
+        self.column_stats = {}
+        self.corr_threshold = 0.80
 
     def set_columns(self):
         self.dataset.columns = self.config['columns']
@@ -87,7 +88,7 @@ class Dataset:
     def drop_cols(self, cols):
         print('\n--- Dropping columns')
         print(cols)
-        self.dataset.drop(columns=cols)
+        self.dataset.drop(columns=cols, inplace=True)
 
     def onehotencode(self):
         self.dataset = pd.get_dummies(self.dataset, columns=self.config['onehotencode_cols'], drop_first=True)
@@ -100,205 +101,6 @@ class Dataset:
         df_sample = self.dataset[(self.dataset[level] == by)].sample(n)
         print(df_sample.shape)
 
-    def linear(self):
-
-        from sklearn import preprocessing
-        le = preprocessing.LabelEncoder()
-        df_encode = self.dataset.iloc[:, 0:7]
-        #df_encode.drop(columns = ['is_host_login', 'num_outbound_cmds', 'attack_category', 'label', 'target'])
-        df_encode = df_encode.apply(le.fit_transform)
-        sc = StandardScaler()
-        mms = MinMaxScaler(feature_range=(0, 1))
-        df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
-        #scatter_matrix(df_encode.iloc[:, 0:4], figsize=(15, 11))
-        #plt.show()
-
-
-
-
-        print('df encode shape', df_encode.shape)
-        print('self dataset shape', self.dataset.shape)
-        df_encode = df_encode.set_index(self.dataset.index)
-        df_encode['target'] = self.dataset['target']
-        cdict = {0: 'red', 1: 'blue'}
-        import seaborn as sns
-        #sns.set(style="ticks")
-        #sns.pairplot(df_encode,  vars=df_encode.columns[:-1], hue="target", palette=cdict, height=5)
-        #plt.show()
-
-        #plt.clf()
-        #plt.figure(figsize = (10, 6))
-        #names = ['normal', 'attack']
-        #colors = ['b','r']
-        #label = (df_encode.target).astype(np.int)
-
-        #plt.title('Duration vs Protocol Type')
-        #plt.xlabel(self.dataset.columns[0])
-        #plt.ylabel(self.dataset.columns[1])
-        #cdict = {0: 'red', 1: 'blue'}
-        #for i in range(len(names)):
-        #    bucket = df_encode[df_encode['target'] == i]
-        #    bucket = bucket.iloc[:,[0,1]].values
-        #    plt.scatter(bucket[:, 0], bucket[:, 1], label=names[i], c = cdict[i])
-        #plt.legend()
-        #plt.show()
-
-        # Convex hull
-        plt.clf()
-        plt.figure(figsize=(10, 6))
-        names = ['normal', 'attack']
-        colors = ['b', 'r']
-        label = (df_encode.target).astype(np.int)
-        plt.title(self.dataset.columns[0] + ' vs ' + self.dataset.columns[5])
-        plt.xlabel(self.dataset.columns[0])
-        plt.ylabel(self.dataset.columns[5])
-        for i in range(len(names)):
-            bucket = df_encode[df_encode['target'] == i]
-            bucket = bucket.iloc[:, [0, 5]].values
-            hull = ConvexHull(bucket)
-            plt.scatter(bucket[:, 0], bucket[:, 1], label=names[i])
-            for j in hull.simplices:
-                plt.plot(bucket[j, 0], bucket[j, 1], colors[i])
-        plt.legend()
-        plt.show()
-
-    def linear_perceptron(self):
-        from sklearn import preprocessing
-        le = preprocessing.LabelEncoder()
-        df_encode = self.dataset.iloc[:, [0, 5]]
-        df_encode = df_encode.apply(le.fit_transform)
-        sc = StandardScaler()
-        df_encode = pd.DataFrame(sc.fit_transform(df_encode), columns=df_encode.columns)
-
-        print('df encode shape', df_encode.shape)
-        print('self dataset shape', self.dataset.shape)
-        df_encode = df_encode.set_index(self.dataset.index)
-        y = self.dataset['target']
-
-        from sklearn.linear_model import Perceptron
-        perceptron = Perceptron(random_state=0)
-        perceptron.fit(df_encode, y)
-        predicted = perceptron.predict(df_encode)
-
-        from sklearn.metrics import confusion_matrix
-        cm = confusion_matrix(y, predicted)
-
-        plt.clf()
-        plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Wistia)
-        classNames = ['normal', 'attack']
-        plt.title('Perceptron Confusion Matrix - Entire Data')
-        plt.ylabel('True label')
-        plt.xlabel('Predicted label')
-        tick_marks = np.arange(len(classNames))
-        plt.xticks(tick_marks, classNames, rotation=45)
-        plt.yticks(tick_marks, classNames)
-        s = [['TN', 'FP'], ['FN', 'TP']]
-
-        for i in range(2):
-            for j in range(2):
-                plt.text(j, i, str(s[i][j]) + " = " + str(cm[i][j]))
-        plt.show()
-
-        from matplotlib.colors import ListedColormap
-        plt.clf()
-        X_set, y_set = df_encode, y
-        y_set = y_set.values
-        X_set = X_set.values
-        X1, X2 = np.meshgrid(np.arange(start=X_set[:, 0].min() - 1, stop=X_set[:, 0].max() + 1, step=0.01),
-                             np.arange(start=X_set[:, 1].min() - 1, stop=X_set[:, 1].max() + 1, step=0.01))
-        plt.contourf(X1, X2, perceptron.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
-                     alpha=0.75, cmap=ListedColormap(('navajowhite', 'darkkhaki')))
-        plt.xlim(X1.min(), X1.max())
-        plt.ylim(X2.min(), X2.max())
-        for i, j in enumerate(np.unique(y_set)):
-            plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],
-                        c=ListedColormap(('red', 'green'))(i), label=j)
-        plt.title('Perceptron Classifier (Decision boundary for Setosa vs the rest)')
-        plt.xlabel('Petal Length')
-        plt.ylabel('Petal Width')
-        plt.legend()
-        plt.show()
-
-    def linear_svc(self):
-        #https: // scikit - learn.org / stable / auto_examples / svm / plot_iris.html
-        from sklearn import preprocessing
-        le = preprocessing.LabelEncoder()
-        df_encode = self.dataset.iloc[:, [0, 5]]
-        df_encode = df_encode.apply(le.fit_transform)
-        sc = StandardScaler()
-        df_encode = pd.DataFrame(sc.fit_transform(df_encode), columns=df_encode.columns)
-        y = self.dataset['target']
-
-        from sklearn.svm import SVC
-        svm = SVC(C=1.0, kernel='linear', random_state=0)
-        svm.fit(df_encode, y)
-
-        predicted = svm.predict(df_encode)
-
-        from sklearn.metrics import confusion_matrix
-        cm = confusion_matrix(y, predicted)
-
-        from matplotlib.colors import ListedColormap
-        plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Wistia)
-        classNames = ['normal', 'attack']
-        plt.title('SVM Linear Kernel Confusion Matrix - Setosa')
-        plt.ylabel('True label')
-        plt.xlabel('Predicted label')
-        tick_marks = np.arange(len(classNames))
-        plt.xticks(tick_marks, classNames, rotation=45)
-        plt.yticks(tick_marks, classNames)
-        s = [['TN', 'FP'], ['FN', 'TP']]
-        plt.show()
-
-        for i in range(2):
-            for j in range(2):
-                plt.text(j, i, str(s[i][j]) + " = " + str(cm[i][j]))
-
-        plt.clf()
-        X_set, y_set = df_encode, y
-        y_set = y_set.values
-        X_set = X_set.values
-        X1, X2 = np.meshgrid(np.arange(start=X_set[:, 0].min() - 1, stop=X_set[:, 0].max() + 1, step=0.01),
-                             np.arange(start=X_set[:, 1].min() - 1, stop=X_set[:, 1].max() + 1, step=0.01))
-        plt.contourf(X1, X2, svm.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
-                     alpha=0.75, cmap=ListedColormap(('navajowhite', 'darkkhaki')))
-        plt.xlim(X1.min(), X1.max())
-        plt.ylim(X2.min(), X2.max())
-        for i, j in enumerate(np.unique(y_set)):
-            plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],
-                        c=ListedColormap(('red', 'green'))(i), label=j)
-        plt.title('Perceptron Classifier (Decision boundary for Setosa vs the rest)')
-        plt.xlabel('Petal Length')
-        plt.ylabel('Petal Width')
-        plt.legend()
-        plt.show()
-
-    def cluster(self):
-        from sklearn.decomposition import PCA
-
-        pca = PCA(n_components=3)
-        from sklearn import preprocessing
-        le = preprocessing.LabelEncoder()
-        df_encode = self.dataset.iloc[:, :-3]
-        df_encode = df_encode.apply(le.fit_transform)
-        sc = StandardScaler()
-        df_encode = pd.DataFrame(sc.fit_transform(df_encode), columns=df_encode.columns)
-
-        df_encode = pca.fit_transform(df_encode)
-
-        from sklearn.cluster import KMeans
-
-        kmeans = KMeans(n_clusters=5)
-        kmeans.fit(df_encode)
-        print(kmeans.cluster_centers_)
-        y_km = kmeans.fit_predict(df_encode)
-        C = kmeans.cluster_centers_
-        plt.scatter(df_encode[y_km == 0, 0], df_encode[y_km == 0, 1], s=100, c='red')
-        plt.scatter(df_encode[y_km == 1, 0], df_encode[y_km == 1, 1], s=100, c='black')
-        plt.scatter(df_encode[y_km == 2, 0], df_encode[y_km == 2, 1], s=100, c='blue')
-        plt.scatter(df_encode[y_km == 3, 0], df_encode[y_km == 3, 1], s=100, c='cyan')
-        plt.scatter(df_encode[y_km == 4, 0], df_encode[y_km == 4, 1], s=50, c='green')
-        plt.show()
 
     def boxplot(self):
         import seaborn as sns
@@ -339,24 +141,14 @@ class Dataset:
                         print('For column {} deleting {} rows over value {}'.format(col, len(outliers), threshold))
                         self.dataset = pd.concat([self.dataset, outliers]).drop_duplicates(keep=False)
 
-    def disto(self):
-        for col in self.dataset.columns:
-            if self.dataset[col].dtype == np.float64 or self.dataset[col].dtype == np.int64:
-                sns.distplot(self.dataset[col])
-                plt.show()
+    def drop_highly_correlated(self):
+        corr = self.dataset.corr().abs()
+        upper_triangle = corr.where(np.triu(np.ones(corr.shape), k=1).astype(np.bool))
 
-    def correlation_heatmap(self):
-        self.correlation = self.dataset.corr()
-        fig, ax = plt.subplots(figsize=(30, 30))
-        colormap = sns.diverging_palette(220, 10, as_cmap=True)
-
-        dropSelf = np.zeros_like(self.correlation) # Drop self-correlations
-        dropSelf[np.triu_indices_from(dropSelf)] = True
-        sns.heatmap(self.correlation, cmap=colormap, annot=True, fmt=".2f", mask=dropSelf)
-        plt.xticks(range(len(self.correlation.columns)), self.correlation.columns)
-        plt.yticks(range(len(self.correlation.columns)), self.correlation.columns)
-        plt.savefig(fname='viz/' + 'Correlation - Heatmap - Top 20', dpi=300, format='png')
-        plt.show()
+        # Find index of feature columns with correlation greater than 0.95
+        cols_to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] >=
+                                                                           self.corr_threshold)]
+        self.drop_cols(cols_to_drop)
 
     def standardized_data(self):
         for col in self.dataset.columns:
