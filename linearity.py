@@ -13,6 +13,8 @@ from visualize import Visualize
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Perceptron
 from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
+
 from sklearn.datasets import load_wine
 from pandas.plotting import scatter_matrix
 from visualize import Visualize
@@ -21,6 +23,9 @@ import seaborn as sns
 from scipy.spatial import ConvexHull
 from sklearn.metrics import confusion_matrix
 from matplotlib.colors import ListedColormap
+
+
+
 
 
 @contextmanager
@@ -56,12 +61,33 @@ class LinearSeparability:
         with timer('\nInitial dataset discovery'):
             self.ds.shape()
         with timer('\nScatter target'):
-            self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='attack_category')
-            self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='serror_rate', hue='attack_category')
-            self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_host_count', hue='attack_category')
-            self.visualize.scatter(self.X, cola='rerror_rate', colb='count', hue='attack_category')
-            self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='attack_category')
+            # self.scatter()
+            pass
+        with timer('\nConvex hull'):
+            # self.convex_hull()
+            pass
+        with timer('\nPerceptron'):
+            pass
+            #self.perceptron()
+        with timer('\nSVM'):
+            pass
+            #self.svm()
+        with timer('\nRBF'):
+            self.rbf()
 
+    def scatter(self):
+        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='attack_category')
+        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='serror_rate', hue='attack_category')
+        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_host_count', hue='attack_category')
+        self.visualize.scatter(self.X, cola='rerror_rate', colb='count', hue='attack_category')
+        self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='attack_category')
+
+    def convex_hull(self):
+        buckets = self.X['attack_category'].unique()
+        self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='count')
+        self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='serror_rate')
+        self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='dst_host_count')
+        self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='rerror_rate', colb='count')
 
 
     @staticmethod
@@ -83,28 +109,6 @@ class LinearSeparability:
                 plt.text(j, i, str(s[i][j]) + " = " + str(cm[i][j]))
         plt.show()
 
-    def show_boundary(self, x, y, clf):
-        plt.clf()
-
-        if isinstance(x, pd.DataFrame):
-            x_set, y_set = x.values, y.values
-        else:
-            x_set, y_set = x, y
-
-        x1, x2 = np.meshgrid(np.arange(start=x_set[:, 0].min() - 1, stop=x_set[:, 0].max() + 1, step=0.01),
-                             np.arange(start=x_set[:, 1].min() - 1, stop=x_set[:, 1].max() + 1, step=0.01))
-        plt.contourf(x1, x2, clf.predict(np.array([x1.ravel(), x2.ravel()]).T).reshape(x1.shape),
-                     alpha=0.75, cmap=ListedColormap(('navajowhite', 'darkkhaki')))
-        plt.xlim(x1.min(), x1.max())
-        plt.ylim(x2.min(), x2.max())
-        for i, j in enumerate(np.unique(y_set)):
-            plt.scatter(x_set[y_set == j, 0], x_set[y_set == j, 1],
-                        c=self.class_colours[i], label=j)
-        plt.title('Perceptron Classifier - Decision boundary')
-        plt.xlabel('alcohol')
-        plt.ylabel('malic_acid')
-        plt.legend()
-        plt.show()
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')
@@ -115,54 +119,48 @@ class LinearSeparability:
         self.y = self.ds.target
 
 
-    def convex_hull(self):
-        plt.clf()
-        plt.figure(figsize=(10, 6))
-        names = self.wine.target_names
-        plt.title(self.df_wine.columns[0] + ' vs ' + self.df_wine.columns[1])
-        plt.xlabel(self.df_wine.columns[0])
-        plt.ylabel(self.df_wine.columns[1])
-        for i in range(len(names)):
-            bucket = self.df_wine[self.y == i]
-            bucket = bucket.iloc[:, [0, 1]].values
-            hull = ConvexHull(bucket)
-            plt.scatter(bucket[:, 0], bucket[:, 1], label=names[i], c=self.class_colours[i])
-            for j in hull.simplices:
-                plt.plot(bucket[j, 0], bucket[j, 1], c=self.class_colours[i])
-        plt.legend()
-        plt.show()
-
     def perceptron(self):
         perceptron = Perceptron(max_iter=100, tol=1e-3, random_state=self.random_state)
-        _x = self.df_wine.iloc[:, [0, 1]]
+        _x = self.X.iloc[:, [4, 5]]
         # Boolean cast classes other than 1 to 0
         _y = (self.y == 1).astype(np.int)
+        _y = _y.values.ravel()
         perceptron.fit(_x, _y)
         predicted = perceptron.predict(_x)
-        self.confusion_matrix(_y, predicted)
-        self.show_boundary(_x, _y, perceptron)
+        #self.confusion_matrix(_y, predicted)
+        self.visualize.boundary(_x, _y, perceptron)
 
     def svm(self):
-        svm = SVC(C=1.0, kernel='linear', random_state=self.random_state)
-        _x = self.df_wine.iloc[:, [0, 1]]
+        plt.clf()
+        from sklearn.preprocessing import StandardScaler
+        sc = StandardScaler()
+        _x = self.X.iloc[:, [4, 5]]
+        _x = sc.fit_transform(_x)
+
+        svm = LinearSVC(max_iter=500, random_state=self.random_state, tol=1e-5)
+
         # Boolean cast classes other than 1 to 0
         _y = (self.y == 1).astype(np.int)
+        _y = _y.values.ravel()
         svm.fit(_x, _y)
         predicted = svm.predict(_x)
-        self.confusion_matrix(_y, predicted)
-        self.show_boundary(_x, _y, svm)
+        #self.confusion_matrix(_y, predicted)
+        self.visualize.boundary(_x, _y, svm)
 
     def rbf(self):
+        from sklearn.preprocessing import StandardScaler
         sc = StandardScaler()
-        _x = self.df_wine.iloc[:, [0, 1]]
+        _x = self.X.iloc[:30000, [4, 7]]
+        _x = sc.fit_transform(_x)
         # Boolean cast classes other than 1 to 0
         _y = (self.y == 1).astype(np.int)
-        _x = sc.fit_transform(_x)
-        svm = SVC(kernel='rbf', random_state=self.random_state)
+        _y = _y[:30000].values.ravel()
+
+        svm = SVC(kernel='rbf', gamma=1.0, C=1.0, random_state=self.random_state)
         svm.fit(_x, _y)
         predicted = svm.predict(_x)
-        self.confusion_matrix(_y, predicted)
-        self.show_boundary(_x, _y, svm)
+        #self.confusion_matrix(_y, predicted)
+        self.visualize.boundary(_x, _y, svm)
 
 
 def linear(self):

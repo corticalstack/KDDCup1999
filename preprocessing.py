@@ -1,18 +1,13 @@
 """
-==========================================================
-Preprocessing -
-==========================================================
-
-The following examples demonstrate various under and over-sampling techniques
-for a dataset in which classes are extremely imbalanced
-
-Visualisations using both linear and radial functions to illustrate separability
-
+============================================================================
+Preprocessing - Initial and extended data discovery with feature engineering
+============================================================================
 """
 from contextlib import contextmanager
 import time
 from filehandler import Filehandler
 from dataset import KDDCup1999
+from visualize import Visualize
 
 
 @contextmanager
@@ -28,6 +23,7 @@ class Preprocessing:
         print(__doc__)
 
         self.filehandler = Filehandler()
+        self.visualize = Visualize()
         self.ds = KDDCup1999()
 
         with timer('\nLoading dataset'):
@@ -44,17 +40,23 @@ class Preprocessing:
             self.ds.discovery()
         with timer('\nSetting target'):
             self.ds.set_target()
-        with timer('\nExtended dataset discovery'):
+        with timer('\nEvaluating sparse features'):
             self.ds.evaluate_sparse_features(engineer=True)
+        with timer('\nVisualising pairplot for selected columns'):
+            self.visualize.pairplot(self.ds.dataset, self.ds.config['pairplot_cols'], self.ds.config['pairplot_target'])
         with timer('\nDropping columns'):
             self.ds.drop_cols(self.ds.config['drop_cols_01'])
-        with timer('\nExtended dataset discovery'):
-            self.ds.correlation_heatmap()
+        with timer('\nEvaluating correlation'):
+            self.visualize.correlation_heatmap(self.ds.dataset, title='Correlation Heatmap Before Column Drop')
+            self.ds.drop_highly_correlated()
+            self.visualize.correlation_heatmap(self.ds.dataset, title='Correlation Heatmap After Column Drop')
         with timer('\nPersisting transformed dataset and target'):
             self.filehandler.write_csv(self.ds.config['path'], self.ds.config['file'] + '_processed', self.ds.dataset)
             self.filehandler.write_csv(self.ds.config['path'], self.ds.config['file'] + '_target', self.ds.target)
+            self.ds.shape()
 
 
 preprocessing = Preprocessing()
+
 
 
