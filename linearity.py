@@ -6,13 +6,13 @@ Linear Data analysis with scatter graphs, convex hull and linear classifiers
 from contextlib import contextmanager
 import time
 import pandas as pd
-from filehandler import Filehandler
-from dataset import KDDCup1999
 from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Perceptron
 from sklearn.svm import SVC
 from sklearn.svm import LinearSVC
+from filehandler import Filehandler
+from dataset import KDDCup1999
 from visualize import Visualize
 
 
@@ -26,9 +26,10 @@ def timer(title):
 class LinearSeparability:
     def __init__(self):
         self.filehandler = Filehandler()
+        self.ds = KDDCup1999()
         self.visualize = Visualize()
         self.random_state = 20
-        self.ds = KDDCup1999()
+
         self.X = None
         self.y = None
         self.sample = None
