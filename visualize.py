@@ -17,6 +17,8 @@ class Visualize:
     @staticmethod
     def confusion_matrix(y, y_pred, title, class_names):
         cm = confusion_matrix(y, y_pred)
+        df_confusion = pd.crosstab(y, y_pred)
+        print(df_confusion)
         plt.imshow(cm, interpolation='nearest', cmap=plt.get_cmap('tab20c'))
         plt.title(title)
         plt.colorbar()
@@ -163,4 +165,16 @@ class Visualize:
         plt.ylabel(colb, fontsize=12)
         plt.legend()
         plt.savefig(fname='viz/Boundary - ' + title, dpi=300, format='png')
+        plt.show()
+
+    def kdeplot(self, title, df, cols):
+        plt.clf()
+        fig, ax = plt.subplots(figsize=(15, 8))
+
+        ax.set_title(title, fontsize=18)
+        ax.tick_params(axis='both', which='major', labelsize=14)
+        for col in cols:
+            sns.kdeplot(df[col], ax=ax)
+
+        #plt.savefig(fname='viz/' + 'KDE - ' + title, dpi=300, format='png')
         plt.show()
