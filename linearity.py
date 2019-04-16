@@ -107,6 +107,7 @@ class LinearSeparability:
         self.set_X_y()
 
     def classifiers(self):
+        class_names = self.y.unique()
         le = preprocessing.LabelEncoder()
         self.y = le.fit_transform(self.y)
         _y = self.y
@@ -121,7 +122,9 @@ class LinearSeparability:
             for cola, colb in columns:
                 _x = self.X.loc[:, [cola, colb]]
                 clf.fit(_x, _y)
+                _y_pred = clf.predict(_x)
                 self.visualize.boundary(_x, _y, clf, title, cola, colb)
+                self.visualize.confusion_matrix(_y, _y_pred, title + ' - ' + cola + ' vs ' + colb, class_names)
 
 
 linearSeparability = LinearSeparability()

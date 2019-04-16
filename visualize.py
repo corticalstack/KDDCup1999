@@ -3,14 +3,35 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.spatial import ConvexHull
-from matplotlib.colors import ListedColormap
-
+from sklearn.metrics import confusion_matrix
+import itertools
 
 class Visualize:
     def __init__(self):
         self.class_colours = np.array(["red", "green", "blue", "black", "cyan"])
 
-    def correlation_heatmap(self, ds, title='Correlation Heatmap', drop=False):
+    @staticmethod
+    def confusion_matrix(y, y_pred, title, class_names):
+        cm = confusion_matrix(y, y_pred)
+        plt.imshow(cm, interpolation='nearest', cmap=plt.get_cmap('tab20c'))
+        plt.title(title)
+        plt.colorbar()
+        tick_marks = np.arange(len(class_names))
+        plt.xticks(tick_marks, class_names, rotation=45)
+        plt.yticks(tick_marks, class_names)
+        thresh = cm.max() / 2.
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            plt.text(j, i, format(cm[i, j], 'd'), horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        plt.tight_layout()
+        plt.savefig(fname='viz/CM - ' + title, dpi=300, format='png')
+        plt.show()
+
+    @staticmethod
+    def correlation_heatmap(ds, title='Correlation Heatmap', drop=False):
         corr = ds.corr()
         fig, ax = plt.subplots(figsize=(30, 30))
         ax.set_title(title, size=16)
@@ -21,32 +42,38 @@ class Visualize:
         sns.heatmap(corr, cmap=colormap, annot=True, fmt=".2f", mask=dropSelf)
         plt.xticks(range(len(corr.columns)), corr.columns)
         plt.yticks(range(len(corr.columns)), corr.columns)
-        plt.savefig(fname='viz/' + title, dpi=300, format='png')
+        plt.savefig(fname='viz/CorrHeatmap - ' + title, dpi=300, format='png')
         plt.show()
 
-    def pairplot(self, ds, cols, hue, title='Pairplot'):
+    @staticmethod
+    def pairplot(ds, cols, hue, title='Pairplot'):
         fig, ax = plt.subplots(figsize=(80, 80))
         sns.pairplot(ds, vars=cols, hue=hue, palette='hls')
         fig.subplots_adjust(top=1.5, bottom=0.08)
         fig.suptitle(title, size=8, y=1.08)
-        plt.savefig(fname='viz/' + title, dpi=300, format='png')
+        plt.savefig(fname='viz/Pairplot - ' + title, dpi=300, format='png')
         plt.show()
 
-    def scatter(self, df, cola, colb, hue):
+    @staticmethod
+    def scatter(df, cola, colb, hue):
         plt.clf()
         df[hue] = df[hue].astype('category')
         plt.figure(figsize=(10, 6))
-        plt.title(cola + ' vs ' + colb, fontsize=16)
+        title = cola + ' vs ' + colb
+        plt.title(title, fontsize=16)
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
         sns.scatterplot(x=cola, y=colb, hue=hue, palette='Set1', legend=False, size=30, alpha=0.4, data=df)
+        plt.savefig(fname='viz/Scatter - ' + title, dpi=300, format='png')
         plt.show()
 
-    def convex_hull(self, df, buckets, target, cola, colb):
+    @staticmethod
+    def convex_hull(df, buckets, target, cola, colb):
         cmap = plt.get_cmap('Set1')
         plt.clf()
         plt.figure(figsize=(10, 6))
-        plt.title('Convex Hull - ' + cola + ' vs ' + colb)
+        title = 'Convex Hull - ' + cola + ' vs ' + colb
+        plt.title(title)
         plt.xlabel(cola)
         plt.ylabel(colb)
         for i in range(len(buckets)):
@@ -58,6 +85,7 @@ class Visualize:
             for j in hull.simplices:
                 plt.plot(bucket[j, 0], bucket[j, 1], color=hull_color)
         plt.legend()
+        plt.savefig(fname='viz/' + title, dpi=300, format='png')
         plt.show()
 
     def boundary(self, x, y, clf, title, cola, colb):
@@ -80,4 +108,5 @@ class Visualize:
         plt.xlabel(cola)
         plt.ylabel(colb)
         plt.legend()
+        plt.savefig(fname='viz/Boundary - ' + title, dpi=300, format='png')
         plt.show()
