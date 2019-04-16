@@ -34,18 +34,19 @@ class Visualize:
 
     def scatter(self, df, cola, colb, hue):
         plt.clf()
+        df[hue] = df[hue].astype('category')
         plt.figure(figsize=(10, 6))
         plt.title(cola + ' vs ' + colb, fontsize=16)
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
-        sns.scatterplot(x=cola, y=colb, hue=hue, palette='hls', size=30, alpha=0.4, data=df)
+        sns.scatterplot(x=cola, y=colb, hue=hue, palette='Set1', legend=False, size=30, alpha=0.4, data=df)
         plt.show()
 
     def convex_hull(self, df, buckets, target, cola, colb):
         cmap = plt.get_cmap('Set1')
         plt.clf()
         plt.figure(figsize=(10, 6))
-        plt.title(cola + ' vs ' + colb)
+        plt.title('Convex Hull - ' + cola + ' vs ' + colb)
         plt.xlabel(cola)
         plt.ylabel(colb)
         for i in range(len(buckets)):
@@ -59,7 +60,7 @@ class Visualize:
         plt.legend()
         plt.show()
 
-    def boundary(self, x, y, clf):
+    def boundary(self, x, y, clf, title, cola, colb):
         plt.clf()
         if isinstance(x, pd.DataFrame):
             x_set, y_set = x.values, y
@@ -69,14 +70,14 @@ class Visualize:
         x1, x2 = np.meshgrid(np.arange(start=x_set[:, 0].min() - 1, stop=x_set[:, 0].max() + 1, step=0.01),
                              np.arange(start=x_set[:, 1].min() - 1, stop=x_set[:, 1].max() + 1, step=0.01))
         plt.contourf(x1, x2, clf.predict(np.array([x1.ravel(), x2.ravel()]).T).reshape(x1.shape),
-                     alpha=0.75, cmap=ListedColormap(('navajowhite', 'darkkhaki')))
+                     alpha=0.4, cmap=plt.get_cmap('Set1'))
         plt.xlim(x1.min(), x1.max())
         plt.ylim(x2.min(), x2.max())
         for i, j in enumerate(np.unique(y_set)):
             plt.scatter(x_set[y_set == j, 0], x_set[y_set == j, 1],
                         c=self.class_colours[i], label=j)
-        plt.title('Perceptron Classifier - Decision boundary')
-        plt.xlabel('alcohol')
-        plt.ylabel('malic_acid')
+        plt.title(title + ' - ' + cola + ' vs ' + colb)
+        plt.xlabel(cola)
+        plt.ylabel(colb)
         plt.legend()
         plt.show()

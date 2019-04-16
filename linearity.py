@@ -1,31 +1,19 @@
 """
 ============================================================================
-Preprocessing - Initial and extended data discovery with feature engineering
+Linear Data analysis with scatter graphs, convex hull and linear classifiers
 ============================================================================
 """
 from contextlib import contextmanager
 import time
 import pandas as pd
-import numpy as np
 from filehandler import Filehandler
 from dataset import KDDCup1999
-from visualize import Visualize
+from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Perceptron
 from sklearn.svm import SVC
 from sklearn.svm import LinearSVC
-
-from sklearn.datasets import load_wine
-from pandas.plotting import scatter_matrix
 from visualize import Visualize
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy.spatial import ConvexHull
-from sklearn.metrics import confusion_matrix
-from matplotlib.colors import ListedColormap
-
-
-
 
 
 @contextmanager
@@ -39,297 +27,101 @@ class LinearSeparability:
     def __init__(self):
         self.filehandler = Filehandler()
         self.visualize = Visualize()
+        self.random_state = 20
         self.ds = KDDCup1999()
         self.X = None
         self.y = None
-        self.random_state = 20
-        self.class_colours = np.array(["red", "green", "blue", "black", "cyan"])
-        # self.target = None
-
-        # self.scatter_matrix()
-        # self.scatter_target()
-        # self.convex_hull()
-        # self.perceptron()
-        # self.svm()
-        # self.rbf()
-
-
+        self.sample = None
+        self.full = None
+        self.ac_count = {}
+        self.scale_cols = ['duration', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment', 'hot', 'num_failed_logins',
+                           'logged_in', 'num_compromised', 'root_shell', 'num_file_creations', 'num_shells',
+                           'num_access_files', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate',
+                           'srv_diff_host_rate', 'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate',
+                           'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
+        self.full_weights = {'normal': 1, 'dos': 1, 'probe': 1, 'u2r': 1, 'r2l': 1}
+        self.minimal_weights = {'normal': 0.01, 'dos': 0.01, 'probe': 0.2, 'u2r': 0.5, 'r2l': 0.5}
 
         with timer('\nLoading dataset'):
             self.load_data()
-            self.set_data()
-        with timer('\nInitial dataset discovery'):
+            self.set_attack_category_count()
             self.ds.shape()
-        with timer('\nScatter target'):
-            # self.scatter()
-            pass
-        with timer('\nConvex hull'):
-            # self.convex_hull()
-            pass
-        with timer('\nPerceptron'):
-            pass
-            #self.perceptron()
-        with timer('\nSVM'):
-            pass
-            #self.svm()
-        with timer('\nRBF'):
-            self.rbf()
+        with timer('\nEncode and Scale dataset'):
+            # Encode categoricals
+            le = preprocessing.LabelEncoder()
+            self.full['protocol_type'] = le.fit_transform(self.full['protocol_type'])
+            self.full['service'] = le.fit_transform(self.full['service'])
+            self.full['flag'] = le.fit_transform(self.full['flag'])
+
+            # Scale
+            sc = StandardScaler()
+            self.full[self.scale_cols] = sc.fit_transform(self.full[self.scale_cols])
+        with timer('\nPlotting scatter graphs'):
+            self.sample_dataset(self.full_weights)
+            print(self.sample.shape)
+            self.scatter()
+        with timer('\nPlotting scatter graphs with convex hull'):
+            self.sample_dataset(self.full_weights)
+            print(self.sample.shape)
+            self.convex_hull()
+        with timer('\nPlotting linear separability with perceptron'):
+            self.sample_dataset(self.minimal_weights)
+            print(self.sample.shape)
+            self.classifiers()
 
     def scatter(self):
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='attack_category')
+        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='target')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='serror_rate', hue='attack_category')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_host_count', hue='attack_category')
         self.visualize.scatter(self.X, cola='rerror_rate', colb='count', hue='attack_category')
         self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='attack_category')
 
     def convex_hull(self):
-        buckets = self.X['attack_category'].unique()
+        buckets = self.y.unique()
         self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='count')
         self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='serror_rate')
         self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='dst_host_count')
         self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='rerror_rate', colb='count')
 
-
-    @staticmethod
-    def confusion_matrix(y, y_pred):
-        cm = confusion_matrix(y, y_pred)
-        plt.clf()
-        plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Wistia)
-        class_names = ['Negative', 'Positive']
-        plt.title('Perceptron Confusion Matrix - Entire Data')
-        plt.ylabel('True label')
-        plt.xlabel('Predicted label')
-        tick_marks = np.arange(len(class_names))
-        plt.xticks(tick_marks, class_names, rotation=45)
-        plt.yticks(tick_marks, class_names)
-        s = [['TN', 'FP'], ['FN', 'TP']]
-
-        for i in range(2):
-            for j in range(2):
-                plt.text(j, i, str(s[i][j]) + " = " + str(cm[i][j]))
-        plt.show()
-
-
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')
         self.ds.target = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_target')
+        self.full = pd.concat([self.ds.dataset, self.ds.target], axis=1)
 
-    def set_data(self):
-        self.X = self.ds.dataset
-        self.y = self.ds.target
+    def set_attack_category_count(self):
+        ac = self.full['attack_category'].value_counts()
+        for key, value in ac.items():
+            self.ac_count[key] = value
 
+    def set_X_y(self):
+        self.X = self.sample
+        self.y = self.sample['attack_category']
 
-    def perceptron(self):
-        perceptron = Perceptron(max_iter=100, tol=1e-3, random_state=self.random_state)
-        _x = self.X.iloc[:, [4, 5]]
-        # Boolean cast classes other than 1 to 0
-        _y = (self.y == 1).astype(np.int)
-        _y = _y.values.ravel()
-        perceptron.fit(_x, _y)
-        predicted = perceptron.predict(_x)
-        #self.confusion_matrix(_y, predicted)
-        self.visualize.boundary(_x, _y, perceptron)
+    def sample_dataset(self, weights):
+        self.sample = pd.DataFrame()
+        for key, value in self.ac_count.items():
+            samples = int(value * weights[key])
+            df = self.full[self.full.attack_category == key].sample(samples, random_state=self.random_state)
+            self.sample = self.sample.append(df)
+        self.set_X_y()
 
-    def svm(self):
-        plt.clf()
-        from sklearn.preprocessing import StandardScaler
-        sc = StandardScaler()
-        _x = self.X.iloc[:, [4, 5]]
-        _x = sc.fit_transform(_x)
+    def classifiers(self):
+        le = preprocessing.LabelEncoder()
+        self.y = le.fit_transform(self.y)
+        _y = self.y
 
-        svm = LinearSVC(max_iter=500, random_state=self.random_state, tol=1e-5)
+        models = (Perceptron(max_iter=100, tol=1e-3, random_state=self.random_state),
+                  LinearSVC(max_iter=500, random_state=self.random_state, tol=1e-5),
+                  SVC(kernel='rbf', gamma=1, C=1.0, random_state=self.random_state))
 
-        # Boolean cast classes other than 1 to 0
-        _y = (self.y == 1).astype(np.int)
-        _y = _y.values.ravel()
-        svm.fit(_x, _y)
-        predicted = svm.predict(_x)
-        #self.confusion_matrix(_y, predicted)
-        self.visualize.boundary(_x, _y, svm)
+        titles = ('Perceptron', 'LinearSVC (linear kernel)', 'SVC with RBF kernel')
+        columns = [('srv_diff_host_rate', 'srv_count'), ('dst_host_srv_count', 'count')]
+        for clf, title in zip(models, titles):
+            for cola, colb in columns:
+                _x = self.X.loc[:, [cola, colb]]
+                clf.fit(_x, _y)
+                self.visualize.boundary(_x, _y, clf, title, cola, colb)
 
-    def rbf(self):
-        from sklearn.preprocessing import StandardScaler
-        sc = StandardScaler()
-        _x = self.X.iloc[:30000, [4, 7]]
-        _x = sc.fit_transform(_x)
-        # Boolean cast classes other than 1 to 0
-        _y = (self.y == 1).astype(np.int)
-        _y = _y[:30000].values.ravel()
-
-        svm = SVC(kernel='rbf', gamma=1.0, C=1.0, random_state=self.random_state)
-        svm.fit(_x, _y)
-        predicted = svm.predict(_x)
-        #self.confusion_matrix(_y, predicted)
-        self.visualize.boundary(_x, _y, svm)
-
-
-def linear(self):
-    from sklearn import preprocessing
-    le = preprocessing.LabelEncoder()
-    df_encode = self.dataset.iloc[:, 0:7]
-    # df_encode.drop(columns = ['is_host_login', 'num_outbound_cmds', 'attack_category', 'label', 'target'])
-    df_encode = df_encode.apply(le.fit_transform)
-    sc = StandardScaler()
-    mms = MinMaxScaler(feature_range=(0, 1))
-    df_encode = pd.DataFrame(mms.fit_transform(df_encode), columns=df_encode.columns)
-
-    print('df encode shape', df_encode.shape)
-    print('self dataset shape', self.dataset.shape)
-    df_encode = df_encode.set_index(self.dataset.index)
-    df_encode['target'] = self.dataset['target']
-    cdict = {0: 'red', 1: 'blue'}
-    import seaborn as sns
-    # sns.set(style="ticks")
-    # sns.pairplot(df_encode,  vars=df_encode.columns[:-1], hue="target", palette=cdict, height=5)
-    # plt.show()
-
-    # plt.clf()
-    # plt.figure(figsize = (10, 6))
-    # names = ['normal', 'attack']
-    # colors = ['b','r']
-    # label = (df_encode.target).astype(np.int)
-
-    # plt.title('Duration vs Protocol Type')
-    # plt.xlabel(self.dataset.columns[0])
-    # plt.ylabel(self.dataset.columns[1])
-    # cdict = {0: 'red', 1: 'blue'}
-    # for i in range(len(names)):
-    #    bucket = df_encode[df_encode['target'] == i]
-    #    bucket = bucket.iloc[:,[0,1]].values
-    #    plt.scatter(bucket[:, 0], bucket[:, 1], label=names[i], c = cdict[i])
-    # plt.legend()
-    # plt.show()
-
-    # Convex hull
-    plt.clf()
-    plt.figure(figsize=(10, 6))
-    names = ['normal', 'attack']
-    colors = ['b', 'r']
-    label = (df_encode.target).astype(np.int)
-    plt.title(self.dataset.columns[0] + ' vs ' + self.dataset.columns[5])
-    plt.xlabel(self.dataset.columns[0])
-    plt.ylabel(self.dataset.columns[5])
-    for i in range(len(names)):
-        bucket = df_encode[df_encode['target'] == i]
-        bucket = bucket.iloc[:, [0, 5]].values
-        hull = ConvexHull(bucket)
-        plt.scatter(bucket[:, 0], bucket[:, 1], label=names[i])
-        for j in hull.simplices:
-            plt.plot(bucket[j, 0], bucket[j, 1], colors[i])
-    plt.legend()
-    plt.show()
-
-
-def linear_perceptron(self):
-    from sklearn import preprocessing
-    le = preprocessing.LabelEncoder()
-    df_encode = self.dataset.iloc[:, [0, 5]]
-    df_encode = df_encode.apply(le.fit_transform)
-    sc = StandardScaler()
-    df_encode = pd.DataFrame(sc.fit_transform(df_encode), columns=df_encode.columns)
-
-    print('df encode shape', df_encode.shape)
-    print('self dataset shape', self.dataset.shape)
-    df_encode = df_encode.set_index(self.dataset.index)
-    y = self.dataset['target']
-
-    from sklearn.linear_model import Perceptron
-    perceptron = Perceptron(random_state=0)
-    perceptron.fit(df_encode, y)
-    predicted = perceptron.predict(df_encode)
-
-    from sklearn.metrics import confusion_matrix
-    cm = confusion_matrix(y, predicted)
-
-    plt.clf()
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Wistia)
-    classNames = ['normal', 'attack']
-    plt.title('Perceptron Confusion Matrix - Entire Data')
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    tick_marks = np.arange(len(classNames))
-    plt.xticks(tick_marks, classNames, rotation=45)
-    plt.yticks(tick_marks, classNames)
-    s = [['TN', 'FP'], ['FN', 'TP']]
-
-    for i in range(2):
-        for j in range(2):
-            plt.text(j, i, str(s[i][j]) + " = " + str(cm[i][j]))
-    plt.show()
-
-    from matplotlib.colors import ListedColormap
-    plt.clf()
-    X_set, y_set = df_encode, y
-    y_set = y_set.values
-    X_set = X_set.values
-    X1, X2 = np.meshgrid(np.arange(start=X_set[:, 0].min() - 1, stop=X_set[:, 0].max() + 1, step=0.01),
-                         np.arange(start=X_set[:, 1].min() - 1, stop=X_set[:, 1].max() + 1, step=0.01))
-    plt.contourf(X1, X2, perceptron.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
-                 alpha=0.75, cmap=ListedColormap(('navajowhite', 'darkkhaki')))
-    plt.xlim(X1.min(), X1.max())
-    plt.ylim(X2.min(), X2.max())
-    for i, j in enumerate(np.unique(y_set)):
-        plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],
-                    c=ListedColormap(('red', 'green'))(i), label=j)
-    plt.title('Perceptron Classifier (Decision boundary for Setosa vs the rest)')
-    plt.xlabel('Petal Length')
-    plt.ylabel('Petal Width')
-    plt.legend()
-    plt.show()
-
-
-def linear_svc(self):
-    # https: // scikit - learn.org / stable / auto_examples / svm / plot_iris.html
-    from sklearn import preprocessing
-    le = preprocessing.LabelEncoder()
-    df_encode = self.dataset.iloc[:, [0, 5]]
-    df_encode = df_encode.apply(le.fit_transform)
-    sc = StandardScaler()
-    df_encode = pd.DataFrame(sc.fit_transform(df_encode), columns=df_encode.columns)
-    y = self.dataset['target']
-
-    from sklearn.svm import SVC
-    svm = SVC(C=1.0, kernel='linear', random_state=0)
-    svm.fit(df_encode, y)
-
-    predicted = svm.predict(df_encode)
-
-    from sklearn.metrics import confusion_matrix
-    cm = confusion_matrix(y, predicted)
-
-    from matplotlib.colors import ListedColormap
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Wistia)
-    classNames = ['normal', 'attack']
-    plt.title('SVM Linear Kernel Confusion Matrix - Setosa')
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    tick_marks = np.arange(len(classNames))
-    plt.xticks(tick_marks, classNames, rotation=45)
-    plt.yticks(tick_marks, classNames)
-    s = [['TN', 'FP'], ['FN', 'TP']]
-    plt.show()
-
-    for i in range(2):
-        for j in range(2):
-            plt.text(j, i, str(s[i][j]) + " = " + str(cm[i][j]))
-
-    plt.clf()
-    X_set, y_set = df_encode, y
-    y_set = y_set.values
-    X_set = X_set.values
-    X1, X2 = np.meshgrid(np.arange(start=X_set[:, 0].min() - 1, stop=X_set[:, 0].max() + 1, step=0.01),
-                         np.arange(start=X_set[:, 1].min() - 1, stop=X_set[:, 1].max() + 1, step=0.01))
-    plt.contourf(X1, X2, svm.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
-                 alpha=0.75, cmap=ListedColormap(('navajowhite', 'darkkhaki')))
-    plt.xlim(X1.min(), X1.max())
-    plt.ylim(X2.min(), X2.max())
-    for i, j in enumerate(np.unique(y_set)):
-        plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],
-                    c=ListedColormap(('red', 'green'))(i), label=j)
-    plt.title('Perceptron Classifier (Decision boundary for Setosa vs the rest)')
-    plt.xlabel('Petal Length')
-    plt.ylabel('Petal Width')
-    plt.legend()
-    plt.show()
 
 linearSeparability = LinearSeparability()
