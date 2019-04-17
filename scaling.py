@@ -9,12 +9,12 @@ from contextlib import contextmanager
 import time
 import pandas as pd
 from sklearn.metrics import *
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, Normalizer, Binarizer, RobustScaler, QuantileTransformer, PowerTransformer
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, Normalizer, Binarizer, RobustScaler, \
+    QuantileTransformer, PowerTransformer
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
-from sklearn.model_selection import cross_val_predict, cross_val_score
+from sklearn.model_selection import cross_val_predict
 from collections import OrderedDict
-import itertools
 import warnings
 from filehandler import Filehandler
 from dataset import KDDCup1999
