@@ -51,14 +51,14 @@ class RandomForestClf(Model):
     def __init__(self):
         Model.__init__(self)
         self.base['stext'] = 'RFC'
-        self.base['model'] = RandomForestClassifier(random_state=self.random_state)
+        self.base['model'] = RandomForestClassifier(n_estimators=100, random_state = self.random_state)
 
 
 class XgboostClf(Model):
     def __init__(self):
         Model.__init__(self)
         self.base['stext'] = 'XGC'
-        self.base['model'] = XGBClassifier(random_state=self.random_state)
+        self.base['model'] = XGBClassifier(n_estimators=100, random_state=self.random_state)
 
 
 class Scaling:
@@ -70,15 +70,15 @@ class Scaling:
         self.X = None
         self.y = None
         self.full = None
-        self.class_names = None
         self.ac_count = {}
         self.scores = OrderedDict()
-        self.scale_cols = ['duration', 'dst_host_srv_count', 'count', 'dst_host_count', 'rerror_rate', 'srv_diff_host_rate', 'srv_count']
+        self.scale_cols = ['duration', 'dst_host_srv_count', 'count', 'dst_host_count', 'rerror_rate',
+                           'srv_diff_host_rate', 'srv_count']
 
         with timer('\nLoading dataset'):
             self.load_data()
             self.set_attack_category_count()
-            self.set_X_y()
+            self.set_X()
             self.ds.shape()
         with timer('\nScaling'):
             self.before_scaling()
@@ -90,7 +90,16 @@ class Scaling:
                            PowerTransformer(method='yeo-johnson'),
                            QuantileTransformer(output_distribution='normal'),
                            QuantileTransformer(output_distribution='uniform')):
-                self.scale(scaler)
+                title, res_x = self.scale(scaler)
+
+                label = 'attack_category'
+                self.set_y(label)
+                self.model_and_score(scaler, res_x, title, label)
+
+                label = 'target'
+                self.set_y(label)
+                self.model_and_score(scaler, res_x, title, label)
+
         with timer('\nShowing Scores'):
             self.show_scores()
 
@@ -105,10 +114,11 @@ class Scaling:
         for key, value in ac.items():
             self.ac_count[key] = value
 
-    def set_X_y(self):
+    def set_X(self):
         self.X = self.full.loc[:, self.scale_cols]
-        self.y = self.full['attack_category']
-        self.class_names = self.y.unique()
+
+    def set_y(self, label):
+        self.y = self.full[label]
 
     def before_scaling(self):
         self.visualize.kdeplot('Before Scaling', self.X, self.scale_cols)
@@ -121,32 +131,34 @@ class Scaling:
             res_x = scaler.fit_transform(x)
 
         res_x = pd.DataFrame(res_x, columns=self.scale_cols)
-
-        title = 'After ' + scaler.__class__.__name__ + ' Scaler'
+        title = 'After ' + scaler.__class__.__name__
         self.visualize.kdeplot(title, res_x, self.scale_cols)
+        return title, res_x
 
+    def model_and_score(self, scaler, res_x, title, label):
         for model in (RandomForestClf(),
                       XgboostClf()):
             model.fit(res_x, self.y)
             y_pred = model.predict(res_x, self.y)
-            self.visualize.confusion_matrix(self.y, y_pred, title + ' - ' + model.__class__.__name__, self.class_names)
-            self.register_score(scaler, model, res_x, self.y, y_pred)
+            self.visualize.confusion_matrix(self.y, y_pred, title + ' - ' + model.__class__.__name__ + ' - Label ' +
+                                            label)
+            self.register_score(scaler, model, res_x, self.y, y_pred, label)
 
-    def register_score(self, scaler, clf, x, y, y_pred):
-        prefix = scaler.__class__.__name__ + '_' + clf.__class__.__name__ + '_'
+    def register_score(self, scaler, clf, x, y, y_pred, label):
+        prefix = scaler.__class__.__name__ + '_' + clf.__class__.__name__ + ' - label ' + label
 
         # Warnings caught to suppress issues with minority classes having no predicted label values
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.scores[prefix + 'recall'] = recall_score(y, y_pred, average=None)
+            self.scores[prefix + ' - recall'] = recall_score(y, y_pred, average=None)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.scores[prefix + 'precision'] = precision_score(y, y_pred, average=None)
+            self.scores[prefix + ' - precision'] = precision_score(y, y_pred, average=None)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.scores[prefix + 'f1'] = f1_score(y, y_pred, average=None)
+            self.scores[prefix + ' - f1'] = f1_score(y, y_pred, average=None)
 
     def show_scores(self):
         print('--- Prediction Scores')

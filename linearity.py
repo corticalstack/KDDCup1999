@@ -25,6 +25,7 @@ def timer(title):
 
 class LinearSeparability:
     def __init__(self):
+        print(__doc__)
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
         self.visualize = Visualize()
@@ -74,9 +75,13 @@ class LinearSeparability:
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='attack_category')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='target')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='serror_rate', hue='attack_category')
+        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='serror_rate', hue='target')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_host_count', hue='attack_category')
+        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_host_count', hue='target')
         self.visualize.scatter(self.X, cola='rerror_rate', colb='count', hue='attack_category')
+        self.visualize.scatter(self.X, cola='rerror_rate', colb='count', hue='target')
         self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='attack_category')
+        self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='target')
 
     def convex_hull(self):
         buckets = self.y.unique()
@@ -108,7 +113,6 @@ class LinearSeparability:
         self.set_X_y()
 
     def classifiers(self):
-        class_names = self.y.unique()
         le = preprocessing.LabelEncoder()
         self.y = le.fit_transform(self.y)
         _y = self.y
@@ -125,7 +129,7 @@ class LinearSeparability:
                 clf.fit(_x, _y)
                 _y_pred = clf.predict(_x)
                 self.visualize.boundary(_x, _y, clf, title, cola, colb)
-                self.visualize.confusion_matrix(_y, _y_pred, title + ' - ' + cola + ' vs ' + colb, class_names)
+                self.visualize.confusion_matrix(_y, _y_pred, title + ' - ' + cola + ' vs ' + colb)
 
 
 linearSeparability = LinearSeparability()

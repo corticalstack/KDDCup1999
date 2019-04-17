@@ -12,37 +12,28 @@ import itertools
 class Visualize:
     def __init__(self):
         self.random_state = 20
-        self.class_colours = np.array(["red", "green", "blue", "black", "cyan"])
+        self.class_colours = np.array(['blue', 'red', 'green', 'darkviolet', 'lime', 'darkorange', 'goldenrod',
+                                       'cyan', 'silver'])
 
     @staticmethod
-    def confusion_matrix(y, y_pred, title, class_names):
-        cm = confusion_matrix(y, y_pred)
+    def confusion_matrix(y, y_pred, title):
+        plt.clf()
         df_confusion = pd.crosstab(y, y_pred)
-        print(df_confusion)
-        plt.imshow(cm, interpolation='nearest', cmap=plt.get_cmap('tab20c'))
-        plt.title(title)
-        plt.colorbar()
-        tick_marks = np.arange(len(class_names))
-        plt.xticks(tick_marks, class_names, rotation=45)
-        plt.yticks(tick_marks, class_names)
-        thresh = cm.max() / 2.
-        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-            plt.text(j, i, format(cm[i, j], 'd'), horizontalalignment="center",
-                     color="white" if cm[i, j] > thresh else "black")
-
-        plt.ylabel('True label')
-        plt.xlabel('Predicted label')
-        plt.tight_layout()
+        plt.figure(figsize=(8, 8))
+        sns.heatmap(df_confusion, annot=True, annot_kws={"size": 14}, fmt='d', cmap='Greens', cbar=False)
+        plt.title(title, fontsize=16)
+        plt.xlabel('Predicted label', fontsize=12)
+        plt.ylabel('True label', fontsize=12)
         plt.savefig(fname='viz/CM - ' + title, dpi=300, format='png')
         plt.show()
 
     @staticmethod
     def correlation_heatmap(ds, title='Correlation Heatmap', drop=False):
         corr = ds.corr()
+        plt.clf()
         fig, ax = plt.subplots(figsize=(30, 30))
         ax.set_title(title, size=16)
         colormap = sns.diverging_palette(220, 10, as_cmap=True)
-
         dropSelf = np.zeros_like(corr)  # Drop self-correlations
         dropSelf[np.triu_indices_from(dropSelf)] = True
         sns.heatmap(corr, cmap=colormap, annot=True, fmt=".2f", mask=dropSelf)
@@ -53,6 +44,7 @@ class Visualize:
 
     @staticmethod
     def pairplot(ds, cols, hue, title='Pairplot'):
+        plt.clf()
         fig, ax = plt.subplots(figsize=(80, 80))
         sns.pairplot(ds, vars=cols, hue=hue, palette='hls')
         fig.subplots_adjust(top=1.5, bottom=0.08)
@@ -65,7 +57,7 @@ class Visualize:
         plt.clf()
         df[hue] = df[hue].astype('category')
         plt.figure(figsize=(10, 6))
-        title = cola + ' vs ' + colb
+        title = cola + ' vs ' + colb + ' - label ' + hue
         plt.title(title, fontsize=16)
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
@@ -73,12 +65,11 @@ class Visualize:
         plt.savefig(fname='viz/Scatter - ' + title, dpi=300, format='png')
         plt.show()
 
-    def scatter_clusters(self, df, num_clusters, y_clusters, col_idx, projection=None):
+    def scatter_clusters(self, df, n_clusters, y_clusters, col_idx, projection=None):
         is_pca = True if 'pca' in col_idx else False
         is_3d = True if projection == '3d' else False
         fig = plt.figure(figsize=(8, 6))
         ax = fig.add_subplot(111, projection=projection)
-
         df_x = df
 
         if is_pca:
@@ -99,6 +90,7 @@ class Visualize:
             ax.set_xlabel('PCA Feature 0', fontsize=12) if is_pca else ax.set_xlabel(df.columns[col_idx[0]])
             ax.set_ylabel('PCA Feature 1', fontsize=12) if is_pca else ax.set_ylabel(df.columns[col_idx[1]])
 
+        title = title + ' - ' + str(n_clusters) + ' Clusters'
         title_suffix = ''
         if not is_pca:
             title_suffix = ' - ' + df.columns[col_idx[0]] + ' vs ' + df.columns[col_idx[1]]
@@ -112,12 +104,14 @@ class Visualize:
         else:
             plt.title(title, fontsize=12)
 
-        for c in range(num_clusters):
+        # 2 clusters minimum
+        for c in range(n_clusters):
             if is_3d:
-                ax.scatter(df_x[y_clusters == c, col_idx[0]], df_x[y_clusters == c, col_idx[1]], df_x[y_clusters == c, col_idx[2]],
-                           alpha=0.3, edgecolors='none', s=30, c=self.class_colours[c])
+                ax.scatter(df_x[y_clusters == c, col_idx[0]], df_x[y_clusters == c, col_idx[1]],
+                           df_x[y_clusters == c, col_idx[2]], alpha=0.2, edgecolors='none', s=30,
+                           c=self.class_colours[c])
             else:
-                ax.scatter(df_x[y_clusters == c, col_idx[0]], df_x[y_clusters == c, col_idx[1]], alpha=0.3,
+                ax.scatter(df_x[y_clusters == c, col_idx[0]], df_x[y_clusters == c, col_idx[1]], alpha=0.2,
                            edgecolors='none', s=30, c=self.class_colours[c])
 
         plt.savefig(fname='viz/Scatter Cluster- ' + title, dpi=300, format='png')
@@ -128,7 +122,7 @@ class Visualize:
         cmap = plt.get_cmap('Set1')
         plt.clf()
         plt.figure(figsize=(10, 6))
-        title = 'Convex Hull - ' + cola + ' vs ' + colb
+        title = 'Convex Hull - ' + cola + ' vs ' + colb + ' - label ' + target
         plt.title(title, fontsize=16)
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
@@ -176,5 +170,5 @@ class Visualize:
         for col in cols:
             sns.kdeplot(df[col], ax=ax)
 
-        #plt.savefig(fname='viz/' + 'KDE - ' + title, dpi=300, format='png')
+        plt.savefig(fname='viz/' + 'KDE - ' + title, dpi=300, format='png')
         plt.show()

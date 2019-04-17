@@ -1,7 +1,7 @@
 """
-====================================================
-Clustering in 2D and 3D with and without PCA applied
-====================================================
+================================================
+Clustering in 2D and 3D with/without PCA applied
+================================================
 """
 from contextlib import contextmanager
 import time
@@ -23,6 +23,7 @@ def timer(title):
 
 class Clustering:
     def __init__(self):
+        print(__doc__)
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
         self.visualize = Visualize()
@@ -30,8 +31,6 @@ class Clustering:
         self.x = None
         self.y = None
         self.full = None
-        self.n_clusters = 5
-        self.colours = ['black', 'blue', 'red', 'cyan', 'green']
         self.ac_count = {}
         self.feature_idx = {0: 0, 1: 0, 2: 0}
         self.pca_idx = {0: 0, 1: 1, 2: 2, 'pca': True}
@@ -54,16 +53,18 @@ class Clustering:
             self.set_x_y()
         with timer('\nPlotting clusters for specific columns'):
             for cola, colb, colc in self.cluster_cols:
-                self.set_indexes(cola, colb, colc)
-                with timer('\n2D clustering without PCA'):
-                    self.cluster(idx=self.feature_idx)
-                with timer('\n3D clustering without PCA'):
-                    self.cluster(idx=self.feature_idx, projection='3d')
+                for c in range(2, 8):
+                    self.set_indexes(cola, colb, colc)
+                    with timer('\n2D clustering without PCA'):
+                        self.cluster(idx=self.feature_idx, n_clusters=c)
+                    with timer('\n3D clustering without PCA'):
+                        self.cluster(idx=self.feature_idx, n_clusters=c, projection='3d')
         with timer('\nPlotting clusters applying PCA'):
-            with timer('\n2D clustering with PCA'):
-                self.cluster(idx=self.pca_idx)
-            with timer('\n3D clustering with PCA'):
-                self.cluster(idx=self.pca_idx, projection='3d')
+            for c in range(2, 7):
+                with timer('\n2D clustering with PCA'):
+                    self.cluster(idx=self.pca_idx, n_clusters=c)
+                with timer('\n3D clustering with PCA'):
+                    self.cluster(idx=self.pca_idx, n_clusters=c, projection='3d')
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')
@@ -95,12 +96,12 @@ class Clustering:
         self.feature_idx[1] = self.x.columns.get_loc(colb)
         self.feature_idx[2] = self.x.columns.get_loc(colc)
 
-    def cluster(self, idx, projection=None):
+    def cluster(self, idx, n_clusters, projection=None):
         df_x = self.x
-        kmeans = KMeans(n_clusters=self.n_clusters, random_state=self.random_state)
+        kmeans = KMeans(n_clusters=n_clusters, random_state=self.random_state)
         kmeans.fit(df_x)
         y_km = kmeans.fit_predict(df_x)
-        self.visualize.scatter_clusters(self.x, self.n_clusters, y_km, idx, projection)
+        self.visualize.scatter_clusters(self.x, n_clusters, y_km, idx, projection)
 
 
 clustering = Clustering()
