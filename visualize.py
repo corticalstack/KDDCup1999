@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D  # Required for 3d projection
 from scipy.spatial import ConvexHull
-from sklearn.metrics import confusion_matrix
 from sklearn.decomposition import PCA
-import itertools
 
 
 class Visualize:

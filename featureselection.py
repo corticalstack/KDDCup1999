@@ -45,10 +45,24 @@ class FeatureSelector:
 
     def show_title(self, label):
         self.title = self.__class__.__name__ + self.title_suffix + ' - Label ' + label
-        print('\n---' + self.title)
+        print('\n--- ' + self.title)
 
     def fit_model(self, X, y):
         self.fit = self.model.fit(X, y)
+
+
+class Original(FeatureSelector):
+    def __init__(self):
+        FeatureSelector.__init__(self)
+        self.model = SelectKBest(score_func=chi2, k=self.num_features)
+        self.title_suffix = ' - All Features'
+
+    def fit_model(self, X, y):
+        pass
+
+    def get_top_features(self, X, label):
+        self.show_title(label)
+        return X
 
 
 class UnivariateSelector(FeatureSelector):
@@ -150,7 +164,8 @@ class FeatureSelection:
             self.encode_scale()
             self.set_X()
         with timer('\nFeature selection'):
-            for selector in (UnivariateSelector(),
+            for selector in (Original(),
+                             UnivariateSelector(),
                              RecursiveSelector(),
                              PCASelector(),
                              ExtraTreesSelector(),
