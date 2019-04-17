@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D  # Required for 3d projection
 from scipy.spatial import ConvexHull
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, KernelPCA
 
 
 class Visualize:
@@ -65,6 +65,7 @@ class Visualize:
 
     def scatter_clusters(self, df, n_clusters, y_clusters, col_idx, projection=None):
         is_pca = True if 'pca' in col_idx else False
+        is_kernelpca = True if 'kpca' in col_idx else False
         is_3d = True if projection == '3d' else False
         fig = plt.figure(figsize=(8, 6))
         ax = fig.add_subplot(111, projection=projection)
@@ -75,18 +76,25 @@ class Visualize:
             pca = PCA(n_components=n_comp, random_state=self.random_state)
             df_x = pca.fit_transform(df_x)
 
+        if is_kernelpca:
+            n_comp = 3 if is_3d else 2
+            kernelpca = KernelPCA(n_components=n_comp, random_state=self.random_state)
+            df_x = kernelpca.fit_transform(df_x)
+
         if isinstance(df_x, pd.DataFrame):
             df_x = df_x.values
 
+        xlabel = 'PCA Feature 0' if is_pca else 'Kernel PCA Feature 0' if is_kernelpca else df.columns[col_idx[0]]
+        ylabel = 'PCA Feature 1' if is_pca else 'Kernel PCA Feature 1' if is_kernelpca else df.columns[col_idx[1]]
+        ax.set_xlabel(xlabel, fontsize=12)
+        ax.set_ylabel(ylabel, fontsize=12)
+
         if is_3d:
-            title = '3D clustering PCA' if is_pca else '3D clustering no PCA'
-            ax.set_xlabel('PCA Feature 0', fontsize=12) if is_pca else ax.set_xlabel(df.columns[col_idx[0]])
-            ax.set_ylabel('PCA Feature 1', fontsize=12) if is_pca else ax.set_ylabel(df.columns[col_idx[1]])
-            ax.set_zlabel('PCA Feature 2', fontsize=12) if is_pca else ax.set_zlabel(df.columns[col_idx[2]])
+            title = '3D Cluster PCA' if is_pca else '3D Cluster Kernel PCA' if is_kernelpca else '3D Cluster no PCA'
+            zlabel = 'PCA Feature 2' if is_pca else 'Kernel PCA Feature 2' if is_kernelpca else df.columns[col_idx[2]]
+            ax.set_zlabel(zlabel, fontsize=12)
         else:
-            title = '2D clustering PCA' if is_pca else '2D clustering no PCA'
-            ax.set_xlabel('PCA Feature 0', fontsize=12) if is_pca else ax.set_xlabel(df.columns[col_idx[0]])
-            ax.set_ylabel('PCA Feature 1', fontsize=12) if is_pca else ax.set_ylabel(df.columns[col_idx[1]])
+            title = '2D Cluster PCA' if is_pca else '2D Cluster Kernel PCA' if is_kernelpca else '2D Cluster no PCA'
 
         title = title + ' - ' + str(n_clusters) + ' Clusters'
         title_suffix = ''

@@ -34,6 +34,7 @@ class Clustering:
         self.ac_count = {}
         self.feature_idx = {0: 0, 1: 0, 2: 0}
         self.pca_idx = {0: 0, 1: 1, 2: 2, 'pca': True}
+        self.kernelpca_idx = {0: 0, 1: 1, 2: 2, 'kpca': True}
         self.scale_cols = ['duration', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment', 'hot', 'num_failed_logins',
                            'logged_in', 'num_compromised', 'root_shell', 'num_file_creations', 'num_shells',
                            'num_access_files', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate',
@@ -65,6 +66,12 @@ class Clustering:
                     self.cluster(idx=self.pca_idx, n_clusters=c)
                 with timer('\n3D clustering with PCA'):
                     self.cluster(idx=self.pca_idx, n_clusters=c, projection='3d')
+        with timer('\nPlotting clusters Kernel applying PCA'):
+            for c in range(2, 7):
+                with timer('\n2D clustering with Kernel PCA'):
+                    self.cluster(idx=self.kernelpca_idx, n_clusters=c)
+                with timer('\n3D clustering with Kernel PCA'):
+                    self.cluster(idx=self.kernelpca_idx, n_clusters=c, projection='3d')
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')

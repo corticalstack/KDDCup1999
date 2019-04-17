@@ -13,7 +13,7 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, KernelPCA
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.model_selection import StratifiedKFold
@@ -106,6 +106,20 @@ class PCASelector(FeatureSelector):
         return self.fit
 
 
+class KernelPCASelector(FeatureSelector):
+    def __init__(self):
+        FeatureSelector.__init__(self)
+        self.model = KernelPCA(n_components = self.num_features, kernel = 'rbf')
+        self.title_suffix = ' - Kernel (RBF) PCA'
+
+    def fit_model(self, X, y):
+        self.fit = self.model.fit_transform(X)
+
+    def get_top_features(self, X, label):
+        self.show_title(label)
+        return self.fit
+
+
 class ExtraTreesSelector(FeatureSelector):
     def __init__(self):
         FeatureSelector.__init__(self)
@@ -168,6 +182,7 @@ class FeatureSelection:
                              UnivariateSelector(),
                              RecursiveSelector(),
                              PCASelector(),
+                             KernelPCASelector(),
                              ExtraTreesSelector(),
                              RandomForestSelector()):
                 for label in ('attack_category', 'target'):
