@@ -1,0 +1,1157 @@
+
+============================================================================
+Preprocessing - Initial and extended data discovery with feature engineering
+============================================================================
+
+
+Loading dataset - done in 2s
+
+Transforming dataset - done in 1s
+
+--- Shape
+	Row count:	 494020
+	Column count:	 44
+
+--- Duplicates by ['attack_category', 'label']
+   attack_category            label  duplicates
+0              dos             back        1235
+1              dos             land           2
+2              dos          neptune       55381
+3              dos              pod          58
+4              dos            smurf      280149
+5              dos         teardrop          61
+6           normal           normal        9446
+7            probe          ipsweep         596
+8            probe             nmap          73
+9            probe        portsweep         624
+10           probe            satan         683
+11             r2l        ftp_write           0
+12             r2l     guess_passwd           0
+13             r2l             imap           0
+14             r2l         multihop           0
+15             r2l              phf           0
+16             r2l              spy           0
+17             r2l      warezclient         127
+18             r2l      warezmaster           0
+19             u2r  buffer_overflow           0
+20             u2r       loadmodule           0
+21             u2r             perl           0
+22             u2r          rootkit           0
+
+--- Dropping Outliers
+For column duration deleting 1 rows over value 55412.549999999996
+For column src_bytes deleting 1 rows over value 658706858.0
+For column num_compromised deleting 1 rows over value 839.8
+For column num_root deleting 1 rows over value 814.15
+
+--- Shape
+	Row count:	 145581
+	Column count:	 44
+
+--- Column Stats
+
+- duration (int64)
+	zero 134974 (92.71%)
+	distinct 2
+	min False
+	mean 0.927
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.260
+	skew -3.287
+	kurt 8.804
+
+- protocol_type (object)
+	zero 0 (0.00%)
+	distinct 1
+
+- service (object)
+	zero 0 (0.00%)
+	distinct 1
+
+- flag (object)
+	zero 0 (0.00%)
+	distinct 1
+
+- src_bytes (int64)
+	zero 57872 (39.75%)
+	distinct 2
+	min False
+	mean 0.398
+	25% 0.000
+	50% 0.000
+	75% 1.000
+	max True
+	std 0.489
+	skew 0.419
+	kurt -1.825
+
+- dst_bytes (int64)
+	zero 67662 (46.48%)
+	distinct 2
+	min False
+	mean 0.465
+	25% 0.000
+	50% 0.000
+	75% 1.000
+	max True
+	std 0.499
+	skew 0.141
+	kurt -1.980
+
+- land (int64)
+	zero 145561 (99.99%)
+	distinct 2
+	min False
+	mean 1.000
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.012
+	skew -85.301
+	kurt 7274.300
+
+- wrong_fragment (int64)
+	zero 144460 (99.23%)
+	distinct 2
+	min False
+	mean 0.992
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.087
+	skew -11.264
+	kurt 124.879
+
+- urgent (int64)
+	zero 145577 (100.00%)
+	distinct 2
+	min False
+	mean 1.000
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.005
+	skew -190.769
+	kurt 36391.500
+
+- hot (int64)
+	zero 143625 (98.66%)
+	distinct 2
+	min False
+	mean 0.987
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.115
+	skew -8.452
+	kurt 69.444
+
+- num_failed_logins (int64)
+	zero 145518 (99.96%)
+	distinct 2
+	min False
+	mean 1.000
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.021
+	skew -48.040
+	kurt 2305.889
+
+- logged_in (int64)
+	zero 74030 (50.85%)
+	distinct 2
+	min False
+	mean 0.509
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.500
+	skew -0.034
+	kurt -1.999
+
+- num_compromised (int64)
+	zero 144593 (99.32%)
+	distinct 2
+	min False
+	mean 0.993
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.082
+	skew -12.015
+	kurt 142.361
+
+- root_shell (int64)
+	zero 145528 (99.96%)
+	distinct 2
+	min False
+	mean 1.000
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.019
+	skew -52.382
+	kurt 2741.906
+
+- su_attempted (int64)
+	zero 145571 (99.99%)
+	distinct 2
+	min False
+	mean 1.000
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.008
+	skew -120.646
+	kurt 14553.600
+
+- num_root (int64)
+	zero 144998 (99.60%)
+	distinct 2
+	min False
+	mean 0.996
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.063
+	skew -15.707
+	kurt 244.723
+
+- num_file_creations (int64)
+	zero 145316 (99.82%)
+	distinct 2
+	min False
+	mean 0.998
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.043
+	skew -23.375
+	kurt 544.383
+
+- num_shells (int64)
+	zero 145530 (99.96%)
+	distinct 2
+	min False
+	mean 1.000
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.019
+	skew -53.400
+	kurt 2849.628
+
+- num_access_files (int64)
+	zero 145130 (99.69%)
+	distinct 2
+	min False
+	mean 0.997
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.056
+	skew -17.883
+	kurt 317.810
+
+- num_outbound_cmds (int64)
+	zero 145581 (100.00%)
+	distinct 1
+	min True
+	mean 1.000
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.000
+	skew 0.000
+	kurt 0.000
+
+- is_host_login (int64)
+	zero 145581 (100.00%)
+	distinct 1
+	min True
+	mean 1.000
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.000
+	skew 0.000
+	kurt 0.000
+
+- is_guest_login (int64)
+	zero 144896 (99.53%)
+	distinct 2
+	min False
+	mean 0.995
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.068
+	skew -14.475
+	kurt 207.539
+
+- count (int64)
+	zero 2 (0.00%)
+	distinct 2
+	min False
+	mean 0.000
+	25% 0.000
+	50% 0.000
+	75% 0.000
+	max True
+	std 0.004
+	skew 269.794
+	kurt 72788.000
+
+- srv_count (int64)
+	zero 2 (0.00%)
+	distinct 2
+	min False
+	mean 0.000
+	25% 0.000
+	50% 0.000
+	75% 0.000
+	max True
+	std 0.004
+	skew 269.794
+	kurt 72788.000
+
+- serror_rate (float64)
+	zero 101809 (69.93%)
+	distinct 2
+	min False
+	mean 0.699
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.459
+	skew -0.869
+	kurt -1.244
+
+- srv_serror_rate (float64)
+	zero 102051 (70.10%)
+	distinct 2
+	min False
+	mean 0.701
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.458
+	skew -0.878
+	kurt -1.229
+
+- rerror_rate (float64)
+	zero 129218 (88.76%)
+	distinct 2
+	min False
+	mean 0.888
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.316
+	skew -2.454
+	kurt 4.024
+
+- srv_rerror_rate (float64)
+	zero 128818 (88.49%)
+	distinct 2
+	min False
+	mean 0.885
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.319
+	skew -2.411
+	kurt 3.815
+
+- same_srv_rate (float64)
+	zero 1717 (1.18%)
+	distinct 2
+	min False
+	mean 0.012
+	25% 0.000
+	50% 0.000
+	75% 0.000
+	max True
+	std 0.108
+	skew 9.044
+	kurt 79.803
+
+- diff_srv_rate (float64)
+	zero 90035 (61.85%)
+	distinct 2
+	min False
+	mean 0.618
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.486
+	skew -0.488
+	kurt -1.762
+
+- srv_diff_host_rate (float64)
+	zero 112128 (77.02%)
+	distinct 2
+	min False
+	mean 0.770
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.421
+	skew -1.285
+	kurt -0.350
+
+- dst_host_count (int64)
+	zero 3 (0.00%)
+	distinct 2
+	min False
+	mean 0.000
+	25% 0.000
+	50% 0.000
+	75% 0.000
+	max True
+	std 0.005
+	skew 220.284
+	kurt 48523.667
+
+- dst_host_srv_count (int64)
+	zero 3 (0.00%)
+	distinct 2
+	min False
+	mean 0.000
+	25% 0.000
+	50% 0.000
+	75% 0.000
+	max True
+	std 0.005
+	skew 220.284
+	kurt 48523.667
+
+- dst_host_same_srv_rate (float64)
+	zero 5847 (4.02%)
+	distinct 2
+	min False
+	mean 0.040
+	25% 0.000
+	50% 0.000
+	75% 0.000
+	max True
+	std 0.196
+	skew 4.684
+	kurt 19.941
+
+- dst_host_diff_srv_rate (float64)
+	zero 63316 (43.49%)
+	distinct 2
+	min False
+	mean 0.435
+	25% 0.000
+	50% 0.000
+	75% 1.000
+	max True
+	std 0.496
+	skew 0.263
+	kurt -1.931
+
+- dst_host_same_src_port_rate (float64)
+	zero 80614 (55.37%)
+	distinct 2
+	min False
+	mean 0.554
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.497
+	skew -0.216
+	kurt -1.953
+
+- dst_host_srv_diff_host_rate (float64)
+	zero 94790 (65.11%)
+	distinct 2
+	min False
+	mean 0.651
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.477
+	skew -0.634
+	kurt -1.598
+
+- dst_host_serror_rate (float64)
+	zero 97042 (66.66%)
+	distinct 2
+	min False
+	mean 0.667
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.471
+	skew -0.707
+	kurt -1.501
+
+- dst_host_srv_serror_rate (float64)
+	zero 97586 (67.03%)
+	distinct 2
+	min False
+	mean 0.670
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.470
+	skew -0.725
+	kurt -1.475
+
+- dst_host_rerror_rate (float64)
+	zero 124249 (85.35%)
+	distinct 2
+	min False
+	mean 0.853
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.354
+	skew -1.999
+	kurt 1.996
+
+- dst_host_srv_rerror_rate (float64)
+	zero 125252 (86.04%)
+	distinct 2
+	min False
+	mean 0.860
+	25% 1.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.347
+	skew -2.079
+	kurt 2.324
+
+- label (object)
+	zero 0 (0.00%)
+	distinct 1
+
+- target (int64)
+	zero 87828 (60.33%)
+	distinct 2
+	min False
+	mean 0.603
+	25% 0.000
+	50% 1.000
+	75% 1.000
+	max True
+	std 0.489
+	skew -0.422
+	kurt -1.822
+
+- attack_category (object)
+	zero 0 (0.00%)
+	distinct 1
+
+--- Row count by target
+	0: 87828 (60.329%)
+	1: 57753 (39.671%)
+
+--- Row count by attack_category
+	normal: 87828 (60.329%)
+	dos: 54572 (37.486%)
+	probe: 2130 ( 1.463%)
+	r2l: 999 ( 0.686%)
+	u2r: 52 ( 0.036%)
+
+--- Row count by ['attack_category', 'label']
+   attack_category            label  Count    Percent
+0              dos             back    968   0.664922
+1              dos             land     19   0.013051
+2              dos          neptune  51820  35.595304
+3              dos              pod    206   0.141502
+4              dos            smurf    641   0.440305
+5              dos         teardrop    918   0.630577
+6           normal           normal  87828  60.329301
+7            probe          ipsweep    651   0.447174
+8            probe             nmap    158   0.108531
+9            probe        portsweep    415   0.285065
+10           probe            satan    906   0.622334
+11             r2l        ftp_write      8   0.005495
+12             r2l     guess_passwd     53   0.036406
+13             r2l             imap     12   0.008243
+14             r2l         multihop      7   0.004808
+15             r2l              phf      4   0.002748
+16             r2l              spy      2   0.001374
+17             r2l      warezclient    893   0.613404
+18             r2l      warezmaster     20   0.013738
+19             u2r  buffer_overflow     30   0.020607
+20             u2r       loadmodule      9   0.006182
+21             u2r             perl      3   0.002061
+22             u2r          rootkit     10   0.006869
+
+Initial dataset discovery - done in 16s
+
+Setting target - done in 0s
+
+--- Evaluating sparse features
+
+land 99.986%
+
+--- Row count by ['label', 'attack_category', 'land']
+              label attack_category  land  Count    Percent
+0              back             dos     0    968   0.664922
+1   buffer_overflow             u2r     0     30   0.020607
+2         ftp_write             r2l     0      8   0.005495
+3      guess_passwd             r2l     0     53   0.036406
+4              imap             r2l     0     12   0.008243
+5           ipsweep           probe     0    651   0.447174
+6              land             dos     1     19   0.013051
+7        loadmodule             u2r     0      9   0.006182
+8          multihop             r2l     0      7   0.004808
+9           neptune             dos     0  51820  35.595304
+10             nmap           probe     0    158   0.108531
+11           normal          normal     0  87827  60.328614
+12           normal          normal     1      1   0.000687
+13             perl             u2r     0      3   0.002061
+14              phf             r2l     0      4   0.002748
+15              pod             dos     0    206   0.141502
+16        portsweep           probe     0    415   0.285065
+17          rootkit             u2r     0     10   0.006869
+18            satan           probe     0    906   0.622334
+19            smurf             dos     0    641   0.440305
+20              spy             r2l     0      2   0.001374
+21         teardrop             dos     0    918   0.630577
+22      warezclient             r2l     0    893   0.613404
+23      warezmaster             r2l     0     20   0.013738
+
+wrong_fragment 99.230%
+
+--- Row count by ['label', 'attack_category', 'wrong_fragment']
+              label attack_category  wrong_fragment  Count    Percent
+0              back             dos               0    968   0.664922
+1   buffer_overflow             u2r               0     30   0.020607
+2         ftp_write             r2l               0      8   0.005495
+3      guess_passwd             r2l               0     53   0.036406
+4              imap             r2l               0     12   0.008243
+5           ipsweep           probe               0    651   0.447174
+6              land             dos               0     19   0.013051
+7        loadmodule             u2r               0      9   0.006182
+8          multihop             r2l               0      7   0.004808
+9           neptune             dos               0  51820  35.595304
+10             nmap           probe               0    158   0.108531
+11           normal          normal               0  87828  60.329301
+12             perl             u2r               0      3   0.002061
+13              phf             r2l               0      4   0.002748
+14              pod             dos               0      3   0.002061
+15              pod             dos               1    203   0.139441
+16        portsweep           probe               0    415   0.285065
+17          rootkit             u2r               0     10   0.006869
+18            satan           probe               0    906   0.622334
+19            smurf             dos               0    641   0.440305
+20              spy             r2l               0      2   0.001374
+21         teardrop             dos               1      8   0.005495
+22         teardrop             dos               3    910   0.625082
+23      warezclient             r2l               0    893   0.613404
+24      warezmaster             r2l               0     20   0.013738
+
+urgent 99.997%
+
+--- Row count by ['label', 'attack_category', 'urgent']
+              label attack_category  urgent  Count    Percent
+0              back             dos       0    968   0.664922
+1   buffer_overflow             u2r       0     30   0.020607
+2         ftp_write             r2l       0      6   0.004121
+3         ftp_write             r2l       1      1   0.000687
+4         ftp_write             r2l       2      1   0.000687
+5      guess_passwd             r2l       0     53   0.036406
+6              imap             r2l       0     12   0.008243
+7           ipsweep           probe       0    651   0.447174
+8              land             dos       0     19   0.013051
+9        loadmodule             u2r       0      9   0.006182
+10         multihop             r2l       0      7   0.004808
+11          neptune             dos       0  51820  35.595304
+12             nmap           probe       0    158   0.108531
+13           normal          normal       0  87827  60.328614
+14           normal          normal       3      1   0.000687
+15             perl             u2r       0      3   0.002061
+16              phf             r2l       0      4   0.002748
+17              pod             dos       0    206   0.141502
+18        portsweep           probe       0    415   0.285065
+19          rootkit             u2r       0      9   0.006182
+20          rootkit             u2r       1      1   0.000687
+21            satan           probe       0    906   0.622334
+22            smurf             dos       0    641   0.440305
+23              spy             r2l       0      2   0.001374
+24         teardrop             dos       0    918   0.630577
+25      warezclient             r2l       0    893   0.613404
+26      warezmaster             r2l       0     20   0.013738
+
+num_failed_logins 99.957%
+
+--- Row count by ['label', 'attack_category', 'num_failed_logins']
+              label attack_category  num_failed_logins  Count    Percent
+0              back             dos                  0    968   0.664922
+1   buffer_overflow             u2r                  0     30   0.020607
+2         ftp_write             r2l                  0      8   0.005495
+3      guess_passwd             r2l                  0      1   0.000687
+4      guess_passwd             r2l                  1     51   0.035032
+5      guess_passwd             r2l                  5      1   0.000687
+6              imap             r2l                  0     12   0.008243
+7           ipsweep           probe                  0    651   0.447174
+8              land             dos                  0     19   0.013051
+9        loadmodule             u2r                  0      9   0.006182
+10         multihop             r2l                  0      7   0.004808
+11          neptune             dos                  0  51820  35.595304
+12             nmap           probe                  0    158   0.108531
+13           normal          normal                  0  87818  60.322432
+14           normal          normal                  1      5   0.003435
+15           normal          normal                  2      3   0.002061
+16           normal          normal                  3      1   0.000687
+17           normal          normal                  4      1   0.000687
+18             perl             u2r                  0      3   0.002061
+19              phf             r2l                  0      4   0.002748
+20              pod             dos                  0    206   0.141502
+21        portsweep           probe                  0    415   0.285065
+22          rootkit             u2r                  0      9   0.006182
+23          rootkit             u2r                  1      1   0.000687
+24            satan           probe                  0    906   0.622334
+25            smurf             dos                  0    641   0.440305
+26              spy             r2l                  0      2   0.001374
+27         teardrop             dos                  0    918   0.630577
+28      warezclient             r2l                  0    893   0.613404
+29      warezmaster             r2l                  0     20   0.013738
+
+num_compromised 99.321%
+
+--- Row count by ['label', 'attack_category', 'num_compromised']
+              label attack_category  num_compromised  Count    Percent
+0              back             dos                0     73   0.050144
+1              back             dos                1    895   0.614778
+2   buffer_overflow             u2r                0     12   0.008243
+3   buffer_overflow             u2r                1      4   0.002748
+4   buffer_overflow             u2r                2      7   0.004808
+5   buffer_overflow             u2r                3      1   0.000687
+6   buffer_overflow             u2r                4      6   0.004121
+7         ftp_write             r2l                0      7   0.004808
+8         ftp_write             r2l                1      1   0.000687
+9      guess_passwd             r2l                0     53   0.036406
+10             imap             r2l                0     11   0.007556
+11             imap             r2l               16      1   0.000687
+12          ipsweep           probe                0    651   0.447174
+13             land             dos                0     19   0.013051
+14       loadmodule             u2r                0      7   0.004808
+15       loadmodule             u2r                1      1   0.000687
+16       loadmodule             u2r                4      1   0.000687
+17         multihop             r2l                0      5   0.003435
+18         multihop             r2l               22      1   0.000687
+19         multihop             r2l               38      1   0.000687
+20          neptune             dos                0  51820  35.595304
+21             nmap           probe                0    158   0.108531
+22           normal          normal                0  87762  60.283966
+23           normal          normal                1     16   0.010990
+24           normal          normal                2     16   0.010990
+25           normal          normal                3     10   0.006869
+26           normal          normal                4      9   0.006182
+27           normal          normal                5      1   0.000687
+28           normal          normal                6      2   0.001374
+29           normal          normal                7      2   0.001374
+30           normal          normal                9      1   0.000687
+31           normal          normal               11      1   0.000687
+32           normal          normal               12      1   0.000687
+33           normal          normal               13      1   0.000687
+34           normal          normal               18      1   0.000687
+35           normal          normal               21      1   0.000687
+36           normal          normal              102      1   0.000687
+37           normal          normal              238      1   0.000687
+38           normal          normal              275      1   0.000687
+39           normal          normal              281      1   0.000687
+40             perl             u2r                0      3   0.002061
+41              phf             r2l                0      4   0.002748
+42              pod             dos                0    206   0.141502
+43        portsweep           probe                0    415   0.285065
+44          rootkit             u2r                0      7   0.004808
+45          rootkit             u2r                2      1   0.000687
+46          rootkit             u2r                5      1   0.000687
+47          rootkit             u2r                6      1   0.000687
+48            satan           probe                0    906   0.622334
+49            smurf             dos                0    641   0.440305
+50              spy             r2l                0      2   0.001374
+51         teardrop             dos                0    918   0.630577
+52      warezclient             r2l                0    893   0.613404
+53      warezmaster             r2l                0     20   0.013738
+
+root_shell 99.964%
+
+--- Row count by ['label', 'attack_category', 'root_shell']
+              label attack_category  root_shell  Count    Percent
+0              back             dos           0    968   0.664922
+1   buffer_overflow             u2r           0     12   0.008243
+2   buffer_overflow             u2r           1     18   0.012364
+3         ftp_write             r2l           0      8   0.005495
+4      guess_passwd             r2l           0     53   0.036406
+5              imap             r2l           0     12   0.008243
+6           ipsweep           probe           0    651   0.447174
+7              land             dos           0     19   0.013051
+8        loadmodule             u2r           0      6   0.004121
+9        loadmodule             u2r           1      3   0.002061
+10         multihop             r2l           0      5   0.003435
+11         multihop             r2l           1      2   0.001374
+12          neptune             dos           0  51820  35.595304
+13             nmap           probe           0    158   0.108531
+14           normal          normal           0  87807  60.314876
+15           normal          normal           1     21   0.014425
+16             perl             u2r           1      3   0.002061
+17              phf             r2l           1      4   0.002748
+18              pod             dos           0    206   0.141502
+19        portsweep           probe           0    415   0.285065
+20          rootkit             u2r           0      8   0.005495
+21          rootkit             u2r           1      2   0.001374
+22            satan           probe           0    906   0.622334
+23            smurf             dos           0    641   0.440305
+24              spy             r2l           0      2   0.001374
+25         teardrop             dos           0    918   0.630577
+26      warezclient             r2l           0    893   0.613404
+27      warezmaster             r2l           0     20   0.013738
+
+su_attempted 99.993%
+
+--- Row count by ['label', 'attack_category', 'su_attempted']
+              label attack_category  su_attempted  Count    Percent
+0              back             dos             0    968   0.664922
+1   buffer_overflow             u2r             0     30   0.020607
+2         ftp_write             r2l             0      8   0.005495
+3      guess_passwd             r2l             0     53   0.036406
+4              imap             r2l             0     12   0.008243
+5           ipsweep           probe             0    651   0.447174
+6              land             dos             0     19   0.013051
+7        loadmodule             u2r             0      9   0.006182
+8          multihop             r2l             0      7   0.004808
+9           neptune             dos             0  51820  35.595304
+10             nmap           probe             0    158   0.108531
+11           normal          normal             0  87819  60.323119
+12           normal          normal             1      5   0.003435
+13           normal          normal             2      4   0.002748
+14             perl             u2r             0      3   0.002061
+15              phf             r2l             0      4   0.002748
+16              pod             dos             0    206   0.141502
+17        portsweep           probe             0    415   0.285065
+18          rootkit             u2r             0     10   0.006869
+19            satan           probe             0    906   0.622334
+20            smurf             dos             0    641   0.440305
+21              spy             r2l             0      1   0.000687
+22              spy             r2l             1      1   0.000687
+23         teardrop             dos             0    918   0.630577
+24      warezclient             r2l             0    893   0.613404
+25      warezmaster             r2l             0     20   0.013738
+
+num_root 99.600%
+
+--- Row count by ['label', 'attack_category', 'num_root']
+              label attack_category  num_root  Count    Percent
+0              back             dos         0    968   0.664922
+1   buffer_overflow             u2r         0     28   0.019233
+2   buffer_overflow             u2r         1      1   0.000687
+3   buffer_overflow             u2r         4      1   0.000687
+4         ftp_write             r2l         0      6   0.004121
+5         ftp_write             r2l         1      2   0.001374
+6      guess_passwd             r2l         0     53   0.036406
+7              imap             r2l         0     11   0.007556
+8              imap             r2l        16      1   0.000687
+9           ipsweep           probe         0    651   0.447174
+10             land             dos         0     19   0.013051
+11       loadmodule             u2r         0      8   0.005495
+12       loadmodule             u2r         3      1   0.000687
+13         multihop             r2l         0      5   0.003435
+14         multihop             r2l        39      1   0.000687
+15         multihop             r2l        54      1   0.000687
+16          neptune             dos         0  51820  35.595304
+17             nmap           probe         0    158   0.108531
+18           normal          normal         0  87260  59.939140
+19           normal          normal         1    230   0.157988
+20           normal          normal         2     18   0.012364
+21           normal          normal         3      2   0.001374
+22           normal          normal         4      8   0.005495
+23           normal          normal         5     12   0.008243
+24           normal          normal         6    126   0.086550
+25           normal          normal         9    167   0.114713
+26           normal          normal        12      1   0.000687
+27           normal          normal       119      1   0.000687
+28           normal          normal       268      1   0.000687
+29           normal          normal       278      1   0.000687
+30           normal          normal       306      1   0.000687
+31             perl             u2r         2      3   0.002061
+32              phf             r2l         0      4   0.002748
+33              pod             dos         0    206   0.141502
+34        portsweep           probe         0    415   0.285065
+35          rootkit             u2r         0      6   0.004121
+36          rootkit             u2r         2      1   0.000687
+37          rootkit             u2r         4      1   0.000687
+38          rootkit             u2r         7      1   0.000687
+39          rootkit             u2r        14      1   0.000687
+40            satan           probe         0    906   0.622334
+41            smurf             dos         0    641   0.440305
+42              spy             r2l         0      2   0.001374
+43         teardrop             dos         0    918   0.630577
+44      warezclient             r2l         0    893   0.613404
+45      warezmaster             r2l         0     20   0.013738
+
+num_file_creations 99.818%
+
+--- Row count by ['label', 'attack_category', 'num_file_creations']
+              label attack_category  num_file_creations  Count    Percent
+0              back             dos                   0    968   0.664922
+1   buffer_overflow             u2r                   0     17   0.011677
+2   buffer_overflow             u2r                   1     11   0.007556
+3   buffer_overflow             u2r                   4      2   0.001374
+4         ftp_write             r2l                   0      6   0.004121
+5         ftp_write             r2l                   1      2   0.001374
+6      guess_passwd             r2l                   0     53   0.036406
+7              imap             r2l                   0     12   0.008243
+8           ipsweep           probe                   0    651   0.447174
+9              land             dos                   0     19   0.013051
+10       loadmodule             u2r                   0      5   0.003435
+11       loadmodule             u2r                   1      1   0.000687
+12       loadmodule             u2r                   4      3   0.002061
+13         multihop             r2l                   0      3   0.002061
+14         multihop             r2l                   1      2   0.001374
+15         multihop             r2l                   4      2   0.001374
+16          neptune             dos                   0  51820  35.595304
+17             nmap           probe                   0    158   0.108531
+18           normal          normal                   0  87595  60.169253
+19           normal          normal                   1    186   0.127764
+20           normal          normal                   2     33   0.022668
+21           normal          normal                   5      1   0.000687
+22           normal          normal                   7      1   0.000687
+23           normal          normal                   8      1   0.000687
+24           normal          normal                   9      1   0.000687
+25           normal          normal                  10      1   0.000687
+26           normal          normal                  12      1   0.000687
+27           normal          normal                  14      1   0.000687
+28           normal          normal                  15      1   0.000687
+29           normal          normal                  16      2   0.001374
+30           normal          normal                  20      1   0.000687
+31           normal          normal                  22      1   0.000687
+32           normal          normal                  25      1   0.000687
+33           normal          normal                  28      1   0.000687
+34             perl             u2r                   2      3   0.002061
+35              phf             r2l                   0      4   0.002748
+36              pod             dos                   0    206   0.141502
+37        portsweep           probe                   0    415   0.285065
+38          rootkit             u2r                   0      7   0.004808
+39          rootkit             u2r                   1      3   0.002061
+40            satan           probe                   0    906   0.622334
+41            smurf             dos                   0    641   0.440305
+42              spy             r2l                   0      1   0.000687
+43              spy             r2l                   1      1   0.000687
+44         teardrop             dos                   0    918   0.630577
+45      warezclient             r2l                   0    893   0.613404
+46      warezmaster             r2l                   0     18   0.012364
+47      warezmaster             r2l                   1      1   0.000687
+48      warezmaster             r2l                  21      1   0.000687
+
+num_shells 99.965%
+
+--- Row count by ['label', 'attack_category', 'num_shells']
+              label attack_category  num_shells  Count    Percent
+0              back             dos           0    968   0.664922
+1   buffer_overflow             u2r           0     30   0.020607
+2         ftp_write             r2l           0      8   0.005495
+3      guess_passwd             r2l           0     53   0.036406
+4              imap             r2l           0     12   0.008243
+5           ipsweep           probe           0    651   0.447174
+6              land             dos           0     19   0.013051
+7        loadmodule             u2r           0      7   0.004808
+8        loadmodule             u2r           2      2   0.001374
+9          multihop             r2l           0      5   0.003435
+10         multihop             r2l           1      1   0.000687
+11         multihop             r2l           2      1   0.000687
+12          neptune             dos           0  51820  35.595304
+13             nmap           probe           0    158   0.108531
+14           normal          normal           0  87785  60.299764
+15           normal          normal           1     43   0.029537
+16             perl             u2r           1      3   0.002061
+17              phf             r2l           0      4   0.002748
+18              pod             dos           0    206   0.141502
+19        portsweep           probe           0    415   0.285065
+20          rootkit             u2r           0     10   0.006869
+21            satan           probe           0    906   0.622334
+22            smurf             dos           0    641   0.440305
+23              spy             r2l           0      1   0.000687
+24              spy             r2l           1      1   0.000687
+25         teardrop             dos           0    918   0.630577
+26      warezclient             r2l           0    893   0.613404
+27      warezmaster             r2l           0     20   0.013738
+
+num_access_files 99.690%
+
+--- Row count by ['label', 'attack_category', 'num_access_files']
+              label attack_category  num_access_files  Count    Percent
+0              back             dos                 0    968   0.664922
+1   buffer_overflow             u2r                 0     30   0.020607
+2         ftp_write             r2l                 0      5   0.003435
+3         ftp_write             r2l                 1      3   0.002061
+4      guess_passwd             r2l                 0     53   0.036406
+5              imap             r2l                 0     12   0.008243
+6           ipsweep           probe                 0    651   0.447174
+7              land             dos                 0     19   0.013051
+8        loadmodule             u2r                 0      8   0.005495
+9        loadmodule             u2r                 1      1   0.000687
+10         multihop             r2l                 0      6   0.004121
+11         multihop             r2l                 2      1   0.000687
+12          neptune             dos                 0  51820  35.595304
+13             nmap           probe                 0    158   0.108531
+14           normal          normal                 0  87387  60.026377
+15           normal          normal                 1    414   0.284378
+16           normal          normal                 2     24   0.016486
+17           normal          normal                 3      2   0.001374
+18           normal          normal                 4      1   0.000687
+19             perl             u2r                 0      3   0.002061
+20              phf             r2l                 1      4   0.002748
+21              pod             dos                 0    206   0.141502
+22        portsweep           probe                 0    415   0.285065
+23          rootkit             u2r                 0     10   0.006869
+24            satan           probe                 0    906   0.622334
+25            smurf             dos                 0    641   0.440305
+26              spy             r2l                 0      1   0.000687
+27              spy             r2l                 1      1   0.000687
+28         teardrop             dos                 0    918   0.630577
+29      warezclient             r2l                 0    893   0.613404
+30      warezmaster             r2l                 0     20   0.013738
+
+num_outbound_cmds 100.000%
+
+--- Row count by ['label', 'attack_category', 'num_outbound_cmds']
+              label attack_category  num_outbound_cmds  Count    Percent
+0              back             dos                  0    968   0.664922
+1   buffer_overflow             u2r                  0     30   0.020607
+2         ftp_write             r2l                  0      8   0.005495
+3      guess_passwd             r2l                  0     53   0.036406
+4              imap             r2l                  0     12   0.008243
+5           ipsweep           probe                  0    651   0.447174
+6              land             dos                  0     19   0.013051
+7        loadmodule             u2r                  0      9   0.006182
+8          multihop             r2l                  0      7   0.004808
+9           neptune             dos                  0  51820  35.595304
+10             nmap           probe                  0    158   0.108531
+11           normal          normal                  0  87828  60.329301
+12             perl             u2r                  0      3   0.002061
+13              phf             r2l                  0      4   0.002748
+14              pod             dos                  0    206   0.141502
+15        portsweep           probe                  0    415   0.285065
+16          rootkit             u2r                  0     10   0.006869
+17            satan           probe                  0    906   0.622334
+18            smurf             dos                  0    641   0.440305
+19              spy             r2l                  0      2   0.001374
+20         teardrop             dos                  0    918   0.630577
+21      warezclient             r2l                  0    893   0.613404
+22      warezmaster             r2l                  0     20   0.013738
+
+is_host_login 100.000%
+
+--- Row count by ['label', 'attack_category', 'is_host_login']
+              label attack_category  is_host_login  Count    Percent
+0              back             dos              0    968   0.664922
+1   buffer_overflow             u2r              0     30   0.020607
+2         ftp_write             r2l              0      8   0.005495
+3      guess_passwd             r2l              0     53   0.036406
+4              imap             r2l              0     12   0.008243
+5           ipsweep           probe              0    651   0.447174
+6              land             dos              0     19   0.013051
+7        loadmodule             u2r              0      9   0.006182
+8          multihop             r2l              0      7   0.004808
+9           neptune             dos              0  51820  35.595304
+10             nmap           probe              0    158   0.108531
+11           normal          normal              0  87828  60.329301
+12             perl             u2r              0      3   0.002061
+13              phf             r2l              0      4   0.002748
+14              pod             dos              0    206   0.141502
+15        portsweep           probe              0    415   0.285065
+16          rootkit             u2r              0     10   0.006869
+17            satan           probe              0    906   0.622334
+18            smurf             dos              0    641   0.440305
+19              spy             r2l              0      2   0.001374
+20         teardrop             dos              0    918   0.630577
+21      warezclient             r2l              0    893   0.613404
+22      warezmaster             r2l              0     20   0.013738
+
+is_guest_login 99.529%
+
+--- Row count by ['label', 'attack_category', 'is_guest_login']
+              label attack_category  is_guest_login  Count    Percent
+0              back             dos               0    968   0.664922
+1   buffer_overflow             u2r               0     30   0.020607
+2         ftp_write             r2l               0      6   0.004121
+3         ftp_write             r2l               1      2   0.001374
+4      guess_passwd             r2l               0     52   0.035719
+5      guess_passwd             r2l               1      1   0.000687
+6              imap             r2l               0     12   0.008243
+7           ipsweep           probe               0    651   0.447174
+8              land             dos               0     19   0.013051
+9        loadmodule             u2r               0      9   0.006182
+10         multihop             r2l               0      5   0.003435
+11         multihop             r2l               1      2   0.001374
+12          neptune             dos               0  51820  35.595304
+13             nmap           probe               0    158   0.108531
+14           normal          normal               0  87457  60.074460
+15           normal          normal               1    371   0.254841
+16             perl             u2r               0      3   0.002061
+17              phf             r2l               0      4   0.002748
+18              pod             dos               0    206   0.141502
+19        portsweep           probe               0    415   0.285065
+20          rootkit             u2r               0     10   0.006869
+21            satan           probe               0    906   0.622334
+22            smurf             dos               0    641   0.440305
+23              spy             r2l               0      2   0.001374
+24         teardrop             dos               0    918   0.630577
+25      warezclient             r2l               0    586   0.402525
+26      warezclient             r2l               1    307   0.210879
+27      warezmaster             r2l               0     18   0.012364
+28      warezmaster             r2l               1      2   0.001374
+
+--- Dropping columns
+['urgent', 'su_attempted']
+
+Evaluating sparse features - done in 1s
+
+Visualising pairplot for selected columns - done in 95s
+
+--- Dropping columns
+['is_host_login', 'num_outbound_cmds', 'label', 'target']
+
+Dropping columns - done in 0s
+
+--- Dropping columns
+['num_root', 'is_guest_login', 'srv_serror_rate', 'srv_rerror_rate', 'same_srv_rate', 'dst_host_same_srv_rate', 'dst_host_serror_rate', 'dst_host_srv_serror_rate', 'dst_host_rerror_rate', 'dst_host_srv_rerror_rate']
+
+Evaluating correlation - done in 20s
+
+--- Shape
+	Row count:	 145581
+	Column count:	 28
+
+Persisting transformed dataset and target - done in 2s

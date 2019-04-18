@@ -3,8 +3,10 @@
 Preprocessing - Initial and extended data discovery with feature engineering
 ============================================================================
 """
+import sys
 from contextlib import contextmanager
 import time
+import numpy as np
 from filehandler import Filehandler
 from dataset import KDDCup1999
 from visualize import Visualize
@@ -20,6 +22,11 @@ def timer(title):
 class Preprocessing:
 
     def __init__(self):
+        # Redirect stdout to file for logging
+        original_stdout = sys.stdout
+        f = open('logs/preprocessing_stdout.txt', 'w')
+        sys.stdout = f
+
         print(__doc__)
 
         self.filehandler = Filehandler()
@@ -35,6 +42,7 @@ class Preprocessing:
             self.ds.shape()
             self.ds.show_duplicates(self.ds.config['level_01'])
             self.ds.drop_duplicates()
+            self.show_zeros()
             self.ds.drop_outliers()
             self.ds.shape()
             self.ds.discovery()
@@ -54,6 +62,18 @@ class Preprocessing:
             self.filehandler.write_csv(self.ds.config['path'], self.ds.config['file'] + '_processed', self.ds.dataset)
             self.filehandler.write_csv(self.ds.config['path'], self.ds.config['file'] + '_target', self.ds.target)
             self.ds.shape()
+
+        sys.stdout = original_stdout
+        f.close()
+
+    def show_zeros(self):
+        df = self.ds.dataset.iloc[:, :-3]
+        df[(df == 0)] = np.nan  # Transform 0's to NaN for visualisation of sparseness with missingno
+        self.visualize.matrix_missing(df, 'Nullity matrix of features with 0 values')
+        self.visualize.bar_missing(df, 'Bar plot of features with 0 values')
+        self.visualize.heat_missing(df, 'Heatmap of features with missing values')
+
+
 
 
 preprocessing = Preprocessing()

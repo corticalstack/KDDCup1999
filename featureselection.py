@@ -4,6 +4,7 @@ Feature selection techniques using KDD Cup 1999 IDS dataset
 ==============================================================================
 For dataset with 5 attack categories in which classes are extremely imbalanced
 """
+import sys
 from contextlib import contextmanager
 import time
 from sklearn import preprocessing
@@ -74,6 +75,7 @@ class UnivariateSelector(FeatureSelector):
     def get_top_features(self, X, label):
         self.show_title(label)
         cols = self.model.get_support()
+        print(cols)
         return X[X.columns[cols].tolist()]
 
 
@@ -89,7 +91,9 @@ class RecursiveSelector(FeatureSelector):
 
     def get_top_features(self, X, label):
         self.show_title(label)
-        return X[X.columns[self.fit.support_].tolist()]
+        top_feats = X[X.columns[self.fit.support_].tolist()]
+        print(top_feats)
+        return top_feats
 
 
 class PCASelector(FeatureSelector):
@@ -135,6 +139,7 @@ class ExtraTreesSelector(FeatureSelector):
         importances = pd.DataFrame.from_dict(feats, orient='index').rename(columns={0: 'importance'})
         importances.sort_values(by='importance', ascending=False, inplace=True)
         cols = importances.index.tolist()
+        print(cols)
         return X[cols[:self.num_features]]
 
 
@@ -153,12 +158,19 @@ class RandomForestSelector(FeatureSelector):
         importances = pd.DataFrame.from_dict(feats, orient='index').rename(columns={0: 'importance'})
         importances.sort_values(by='importance', ascending=False, inplace=True)
         cols = importances.index.tolist()
+        print(cols)
         return X[cols[:self.num_features]]
 
 
 class FeatureSelection:
     def __init__(self):
+        # Redirect stdout to file for logging
+        original_stdout = sys.stdout
+        f = open('logs/featureselection_stdout.txt', 'w')
+        sys.stdout = f
+
         print(__doc__)
+
         self.filehandler = Filehandler()
         self.visualize = Visualize()
         self.ds = KDDCup1999()
@@ -182,14 +194,19 @@ class FeatureSelection:
                              UnivariateSelector(),
                              RecursiveSelector(),
                              PCASelector(),
-                             KernelPCASelector(),
+                             #KernelPCASelector(),
                              ExtraTreesSelector(),
                              RandomForestSelector()):
                 for label in ('attack_category', 'target'):
                     self.set_y(label)
-                    selector.fit_model(self.X, self.y)
+                    with timer('\nFitting selector ' + selector.__class__.__name__):
+                        selector.fit_model(self.X, self.y)
                     x = selector.get_top_features(self.X, label)
-                    self.score_with_xgboost(x, self.y, selector.title)
+                    with timer('\nXGBoost scoring of features selected by ' + selector.__class__.__name__):
+                        self.score_with_xgboost(x, self.y, selector.title)
+
+        sys.stdout = original_stdout
+        f.close()
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')

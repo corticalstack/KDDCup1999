@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import missingno as msno
 from mpl_toolkits.mplot3d import Axes3D  # Required for 3d projection
 from scipy.spatial import ConvexHull
 from sklearn.decomposition import PCA, KernelPCA
@@ -61,6 +62,68 @@ class Visualize:
         plt.ylabel(colb, fontsize=12)
         sns.scatterplot(x=cola, y=colb, hue=hue, palette='Set1', legend=False, size=30, alpha=0.4, data=df)
         plt.savefig(fname='viz/Scatter - ' + title, dpi=300, format='png')
+        plt.show()
+
+    @staticmethod
+    def convex_hull(df, buckets, target, cola, colb):
+        cmap = plt.get_cmap('Set1')
+        plt.clf()
+        plt.figure(figsize=(10, 6))
+        title = 'Convex Hull - ' + cola + ' vs ' + colb + ' - label ' + target
+        plt.title(title, fontsize=16)
+        plt.xlabel(cola, fontsize=12)
+        plt.ylabel(colb, fontsize=12)
+        for i in range(len(buckets)):
+            bucket = df[df[target] == buckets[i]]
+            bucket = bucket.iloc[:, [df.columns.get_loc(cola), df.columns.get_loc(colb)]].values
+            hull = ConvexHull(bucket)
+            hull_color = tuple(np.atleast_2d(cmap(i/10.))[0])
+            plt.scatter(bucket[:, 0], bucket[:, 1], label=buckets[i], c=np.atleast_2d(cmap(i/10.)), alpha=0.4)
+            for j in hull.simplices:
+                plt.plot(bucket[j, 0], bucket[j, 1], color=hull_color)
+        plt.legend()
+        plt.savefig(fname='viz/' + title, dpi=300, format='png')
+        plt.show()
+
+    @staticmethod
+    def kdeplot(title, df, cols):
+        plt.clf()
+        fig, ax = plt.subplots(figsize=(15, 8))
+
+        ax.set_title(title, fontsize=18)
+        ax.tick_params(axis='both', which='major', labelsize=14)
+        for col in cols:
+            sns.kdeplot(df[col], ax=ax)
+
+        plt.savefig(fname='viz/' + 'KDE - ' + title, dpi=300, format='png')
+        plt.show()
+
+    @staticmethod
+    def matrix_missing(sample_df, title):
+        missing_data_df = sample_df.columns[sample_df.isnull().any()].tolist()
+        msno.matrix(sample_df[missing_data_df], sparkline=False, fontsize=12, figsize=(30, 22))
+        plt.title(title, fontsize=20, y=1.08)
+        fig = plt.gcf()
+        plt.tight_layout()
+        fig.savefig('viz/Nullity - ' + title + '.png')
+        plt.show()
+
+    @staticmethod
+    def bar_missing(sample_df, title):
+        missing_data_df = sample_df.columns[sample_df.isnull().any()].tolist()
+        msno.bar(sample_df[missing_data_df], color="black", log=False, figsize=(30, 22))
+        plt.title(title, fontsize=24, y=1.05)
+        fig = plt.gcf()
+        fig.savefig('viz/Nullity - ' + title + '.png')
+        plt.show()
+
+    @staticmethod
+    def heat_missing(sample_df, title):
+        missing_data_df = sample_df.columns[sample_df.isnull().any()].tolist()
+        msno.heatmap(sample_df[missing_data_df], figsize=(20, 20))
+        plt.title(title, fontsize=24)
+        fig = plt.gcf()
+        fig.savefig('viz/Nullity - ' + title + '.png')
         plt.show()
 
     def scatter_clusters(self, df, n_clusters, y_clusters, col_idx, projection=None):
@@ -123,27 +186,6 @@ class Visualize:
         plt.savefig(fname='viz/Scatter Cluster- ' + title, dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def convex_hull(df, buckets, target, cola, colb):
-        cmap = plt.get_cmap('Set1')
-        plt.clf()
-        plt.figure(figsize=(10, 6))
-        title = 'Convex Hull - ' + cola + ' vs ' + colb + ' - label ' + target
-        plt.title(title, fontsize=16)
-        plt.xlabel(cola, fontsize=12)
-        plt.ylabel(colb, fontsize=12)
-        for i in range(len(buckets)):
-            bucket = df[df[target] == buckets[i]]
-            bucket = bucket.iloc[:, [df.columns.get_loc(cola), df.columns.get_loc(colb)]].values
-            hull = ConvexHull(bucket)
-            hull_color = tuple(np.atleast_2d(cmap(i/10.))[0])
-            plt.scatter(bucket[:, 0], bucket[:, 1], label=buckets[i], c=np.atleast_2d(cmap(i/10.)), alpha=0.4)
-            for j in hull.simplices:
-                plt.plot(bucket[j, 0], bucket[j, 1], color=hull_color)
-        plt.legend()
-        plt.savefig(fname='viz/' + title, dpi=300, format='png')
-        plt.show()
-
     def boundary(self, x, y, clf, title, cola, colb):
         plt.clf()
         if isinstance(x, pd.DataFrame):
@@ -165,16 +207,4 @@ class Visualize:
         plt.ylabel(colb, fontsize=12)
         plt.legend()
         plt.savefig(fname='viz/Boundary - ' + title, dpi=300, format='png')
-        plt.show()
-
-    def kdeplot(self, title, df, cols):
-        plt.clf()
-        fig, ax = plt.subplots(figsize=(15, 8))
-
-        ax.set_title(title, fontsize=18)
-        ax.tick_params(axis='both', which='major', labelsize=14)
-        for col in cols:
-            sns.kdeplot(df[col], ax=ax)
-
-        plt.savefig(fname='viz/' + 'KDE - ' + title, dpi=300, format='png')
         plt.show()
