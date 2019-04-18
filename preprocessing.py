@@ -23,8 +23,9 @@ class Preprocessing:
 
     def __init__(self):
         # Redirect stdout to file for logging
+        timestr = time.strftime("%Y%m%d-%H%M%S")
         original_stdout = sys.stdout
-        f = open('logs/preprocessing_stdout.txt', 'w')
+        f = open('logs/preprocessing_' + timestr + '_stdout.txt', 'w')
         sys.stdout = f
 
         print(__doc__)
