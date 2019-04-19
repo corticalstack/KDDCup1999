@@ -10,12 +10,12 @@ from sklearn.decomposition import PCA, KernelPCA
 
 class Visualize:
     def __init__(self):
+        self.folder = 'viz'
         self.random_state = 20
         self.class_colours = np.array(['blue', 'red', 'green', 'darkviolet', 'lime', 'darkorange', 'goldenrod',
                                        'cyan', 'silver'])
 
-    @staticmethod
-    def confusion_matrix(y, y_pred, title):
+    def confusion_matrix(self, y, y_pred, title):
         plt.clf()
         df_confusion = pd.crosstab(y, y_pred)
         plt.figure(figsize=(8, 8))
@@ -23,11 +23,10 @@ class Visualize:
         plt.title(title, fontsize=16)
         plt.xlabel('Predicted label', fontsize=12)
         plt.ylabel('True label', fontsize=12)
-        plt.savefig(fname='viz/CM - ' + title, dpi=300, format='png')
+        plt.savefig(fname=self.fname('CM', title), dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def correlation_heatmap(ds, title='Correlation Heatmap', drop=False):
+    def correlation_heatmap(self, ds, title='Correlation Heatmap', drop=False):
         corr = ds.corr()
         plt.clf()
         fig, ax = plt.subplots(figsize=(30, 30))
@@ -38,38 +37,35 @@ class Visualize:
         sns.heatmap(corr, cmap=colormap, annot=True, fmt=".2f", mask=dropSelf)
         plt.xticks(range(len(corr.columns)), corr.columns)
         plt.yticks(range(len(corr.columns)), corr.columns)
-        plt.savefig(fname='viz/CorrHeatmap - ' + title, dpi=300, format='png')
+        plt.savefig(fname=self.fname('CorrHeatmap', title), dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def pairplot(ds, cols, hue, title='Pairplot'):
+    def pairplot(self, ds, cols, hue, title='Pairplot'):
         plt.clf()
         fig, ax = plt.subplots(figsize=(80, 80))
         sns.pairplot(ds, vars=cols, hue=hue, palette='hls')
         fig.subplots_adjust(top=1.5, bottom=0.08)
         fig.suptitle(title, size=8, y=1.08)
-        plt.savefig(fname='viz/Pairplot - ' + title, dpi=300, format='png')
+        plt.savefig(fname=self.fname('Pairplot', title), dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def scatter(df, cola, colb, hue):
+    def scatter(self, df, cola, colb, hue):
         plt.clf()
         df[hue] = df[hue].astype('category')
         plt.figure(figsize=(10, 6))
-        title = cola + ' vs ' + colb + ' - label ' + hue
+        title = '{} vs {} - Label {}'.format(cola, colb, hue)
         plt.title(title, fontsize=16)
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
         sns.scatterplot(x=cola, y=colb, hue=hue, palette='Set1', legend=False, size=30, alpha=0.4, data=df)
-        plt.savefig(fname='viz/Scatter - ' + title, dpi=300, format='png')
+        plt.savefig(fname=self.fname('Scatter', title), dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def convex_hull(df, buckets, target, cola, colb):
+    def convex_hull(self, df, buckets, cola, colb, target):
         cmap = plt.get_cmap('Set1')
         plt.clf()
         plt.figure(figsize=(10, 6))
-        title = 'Convex Hull - ' + cola + ' vs ' + colb + ' - label ' + target
+        title = '{} vs {} - Label {}'.format(cola, colb, target)
         plt.title(title, fontsize=16)
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
@@ -82,11 +78,10 @@ class Visualize:
             for j in hull.simplices:
                 plt.plot(bucket[j, 0], bucket[j, 1], color=hull_color)
         plt.legend()
-        plt.savefig(fname='viz/' + title, dpi=300, format='png')
+        plt.savefig(fname=self.fname('Convex Hull', title), dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def kdeplot(title, df, cols):
+    def kdeplot(self, title, df, cols):
         plt.clf()
         fig, ax = plt.subplots(figsize=(15, 8))
 
@@ -95,35 +90,32 @@ class Visualize:
         for col in cols:
             sns.kdeplot(df[col], ax=ax)
 
-        plt.savefig(fname='viz/' + 'KDE - ' + title, dpi=300, format='png')
+        plt.savefig(fname=self.fname('KDE', title), dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def matrix_missing(sample_df, title):
+    def matrix_missing(self, sample_df, title):
         missing_data_df = sample_df.columns[sample_df.isnull().any()].tolist()
         msno.matrix(sample_df[missing_data_df], sparkline=False, fontsize=12, figsize=(30, 22))
         plt.title(title, fontsize=20, y=1.08)
         fig = plt.gcf()
         plt.tight_layout()
-        fig.savefig('viz/Nullity - ' + title + '.png')
+        plt.savefig(fname=self.fname('Nullity', title), dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def bar_missing(sample_df, title):
+    def bar_missing(self, sample_df, title):
         missing_data_df = sample_df.columns[sample_df.isnull().any()].tolist()
         msno.bar(sample_df[missing_data_df], color="black", log=False, figsize=(30, 22))
         plt.title(title, fontsize=24, y=1.05)
         fig = plt.gcf()
-        fig.savefig('viz/Nullity - ' + title + '.png')
+        plt.savefig(fname=self.fname('Nullity', title), dpi=300, format='png')
         plt.show()
 
-    @staticmethod
-    def heat_missing(sample_df, title):
+    def heat_missing(self, sample_df, title):
         missing_data_df = sample_df.columns[sample_df.isnull().any()].tolist()
         msno.heatmap(sample_df[missing_data_df], figsize=(20, 20))
         plt.title(title, fontsize=24)
         fig = plt.gcf()
-        fig.savefig('viz/Nullity - ' + title + '.png')
+        plt.savefig(fname=self.fname('Nullity', title), dpi=300, format='png')
         plt.show()
 
     def scatter_clusters(self, df, n_clusters, y_clusters, col_idx, projection=None):
@@ -183,7 +175,7 @@ class Visualize:
                 ax.scatter(df_x[y_clusters == c, col_idx[0]], df_x[y_clusters == c, col_idx[1]], alpha=0.2,
                            edgecolors='none', s=30, c=self.class_colours[c])
 
-        plt.savefig(fname='viz/Scatter Cluster- ' + title, dpi=300, format='png')
+        plt.savefig(fname=self.fname('Scatter Cluster', title), dpi=300, format='png')
         plt.show()
 
     def boundary(self, x, y, clf, title, cola, colb):
@@ -206,5 +198,8 @@ class Visualize:
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
         plt.legend()
-        plt.savefig(fname='viz/Boundary - ' + title, dpi=300, format='png')
+        plt.savefig(fname=self.fname('Boundary', title), dpi=300, format='png')
         plt.show()
+
+    def fname(self, prefix, title):
+        return '{}/{} - {}.png'.format(self.folder, prefix, title)

@@ -51,6 +51,10 @@ class FeatureSelector:
     def fit_model(self, X, y):
         self.fit = self.model.fit(X, y)
 
+    def show_rank_feats(self, X, feats):
+        print('Top {} features'.format(self.num_features), feats)
+        print('Low rank features {}'.format(list(set(X.columns) - set(feats))))
+
 
 class Original(FeatureSelector):
     def __init__(self):
@@ -75,7 +79,9 @@ class UnivariateSelector(FeatureSelector):
     def get_top_features(self, X, label):
         self.show_title(label)
         cols = self.model.get_support()
-        print(X.columns[list(map(bool, cols))].tolist())
+        cols_list = X.columns[list(map(bool, cols))].tolist()
+        self.show_rank_feats(X, cols_list)
+        print('Shape', X[X.columns[cols]].shape)
         return X[X.columns[cols]]
 
 
@@ -92,7 +98,8 @@ class RecursiveSelector(FeatureSelector):
     def get_top_features(self, X, label):
         self.show_title(label)
         top_feats = X[X.columns[self.fit.support_].tolist()]
-        print(top_feats.columns.tolist())
+        self.show_rank_feats(X, top_feats.columns.tolist())
+        print('Shape', top_feats.shape)
         return top_feats
 
 
@@ -139,7 +146,8 @@ class ExtraTreesSelector(FeatureSelector):
         importances = pd.DataFrame.from_dict(feats, orient='index').rename(columns={0: 'importance'})
         importances.sort_values(by='importance', ascending=False, inplace=True)
         cols = importances.index.tolist()
-        print(cols)
+        self.show_rank_feats(X, cols[:self.num_features])
+        print('Shape', X[cols[:self.num_features]].shape)
         return X[cols[:self.num_features]]
 
 
@@ -158,7 +166,8 @@ class RandomForestSelector(FeatureSelector):
         importances = pd.DataFrame.from_dict(feats, orient='index').rename(columns={0: 'importance'})
         importances.sort_values(by='importance', ascending=False, inplace=True)
         cols = importances.index.tolist()
-        print(cols)
+        self.show_rank_feats(X, cols[:self.num_features])
+        print('Shape', X[cols[:self.num_features]].shape)
         return X[cols[:self.num_features]]
 
 
@@ -202,7 +211,7 @@ class FeatureSelection:
                     self.set_y(label)
                     with timer('\nFitting selector ' + selector.__class__.__name__):
                         selector.fit_model(self.X, self.y)
-                    x = selector.get_top_features(self.X, label)
+                        x = selector.get_top_features(self.X, label)
                     with timer('\nXGBoost scoring of features selected by ' + selector.__class__.__name__):
                         self.score_with_xgboost(x, self.y, selector.title)
 
@@ -229,6 +238,7 @@ class FeatureSelection:
         self.ds.target = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_target')
         self.full = pd.concat([self.ds.dataset, self.ds.target], axis=1)
         self.ds.shape()
+        print(self.ds.dataset.columns)
         self.ds.row_count_by_target('attack_category')
 
     def encode_scale(self):

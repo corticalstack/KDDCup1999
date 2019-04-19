@@ -24,7 +24,7 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class LinearSeparability:
+class Linearity:
     def __init__(self):
         self.logfile = None
         self.gettrace = getattr(sys, 'gettrace', None)
@@ -100,18 +100,21 @@ class LinearSeparability:
                 sys.stdout = self.logfile
 
     def scatter(self):
-        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='target')
-        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='serror_rate', hue='target')
-        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_host_count', hue='target')
-        self.visualize.scatter(self.X, cola='rerror_rate', colb='count', hue='target')
-        self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='target')
+        self.visualize.scatter(self.X, cola='src_bytes', colb='dst_bytes', hue='target')
+        self.visualize.scatter(self.X, cola='count', colb='diff_srv_rate', hue='target')
+        self.visualize.scatter(self.X, cola='duration', colb='src_bytes', hue='target')
+        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_bytes', hue='target')
+        self.visualize.scatter(self.X, cola='serror_rate', colb='rerror_rate', hue='target')
+        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_bytes', hue='target')
 
     def convex_hull(self):
         buckets = self.y.unique()
-        self.visualize.convex_hull(self.X, buckets, 'target', cola='dst_host_srv_count', colb='count')
-        self.visualize.convex_hull(self.X, buckets, 'target', cola='dst_host_srv_count', colb='serror_rate')
-        self.visualize.convex_hull(self.X, buckets, 'target', cola='dst_host_srv_count', colb='dst_host_count')
-        self.visualize.convex_hull(self.X, buckets, 'target', cola='rerror_rate', colb='count')
+        self.visualize.convex_hull(self.X, buckets, cola='src_bytes', colb='dst_bytes', target='target')
+        self.visualize.convex_hull(self.X, buckets, cola='count', colb='diff_srv_rate', target='target')
+        self.visualize.convex_hull(self.X, buckets, cola='duration', colb='src_bytes', target='target')
+        self.visualize.convex_hull(self.X, buckets, cola='dst_host_srv_count', colb='dst_bytes', target='target')
+        self.visualize.convex_hull(self.X, buckets, cola='serror_rate', colb='rerror_rate', target='target')
+        self.visualize.convex_hull(self.X, buckets, cola='dst_host_srv_count', colb='dst_bytes', target='target')
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')
@@ -124,10 +127,12 @@ class LinearSeparability:
             self.ac_count[key] = value
 
     def set_X_y(self, target):
+        print('Setting X, with y as {}'.format(target))
         self.X = self.sample
         self.y = self.sample[target]
 
     def sample_dataset(self, weights):
+        print('Sampling dataset with weights {}'.format(weights))
         self.sample = pd.DataFrame()
         for key, value in self.ac_count.items():
             samples = int(value * weights[key])
@@ -154,4 +159,4 @@ class LinearSeparability:
                 self.visualize.confusion_matrix(_y, _y_pred, title + ' - ' + cola + ' vs ' + colb)
 
 
-linearSeparability = LinearSeparability()
+linearity = Linearity()
