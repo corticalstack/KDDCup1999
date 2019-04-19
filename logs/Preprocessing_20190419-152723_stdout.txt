@@ -4,7 +4,7 @@ Preprocessing - Initial and extended data discovery with feature engineering
 ============================================================================
 
 
-Loading dataset - done in 2s
+Loading dataset - done in 12s
 
 Transforming dataset - done in 1s
 
@@ -1138,7 +1138,7 @@ is_guest_login 99.529%
 
 Evaluating sparse features - done in 1s
 
-Visualising pairplot for selected columns - done in 95s
+Visualising pairplot for selected columns - done in 100s
 
 --- Dropping columns
 ['is_host_login', 'num_outbound_cmds', 'label', 'target']

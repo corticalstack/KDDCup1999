@@ -3,6 +3,7 @@
 Linear Data analysis with scatter graphs, convex hull and linear classifiers
 ============================================================================
 """
+import sys
 from contextlib import contextmanager
 import time
 import pandas as pd
@@ -25,7 +26,14 @@ def timer(title):
 
 class LinearSeparability:
     def __init__(self):
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
+
         print(__doc__)
+
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
         self.visualize = Visualize()
@@ -61,34 +69,49 @@ class LinearSeparability:
         with timer('\nPlotting scatter graphs'):
             self.sample_dataset(self.full_weights)
             print(self.sample.shape)
+            self.set_X_y('target')
             self.scatter()
         with timer('\nPlotting scatter graphs with convex hull'):
             self.sample_dataset(self.full_weights)
             print(self.sample.shape)
+            self.set_X_y('target')
             self.convex_hull()
-        with timer('\nPlotting linear separability with perceptron'):
+        with timer('\nPlotting linear separability with classifiers'):
             self.sample_dataset(self.minimal_weights)
             print(self.sample.shape)
+            self.set_X_y('target')
             self.classifiers()
 
+        self.log_file()
+
+    def log_file(self):
+        if self.gettrace is None:
+            pass
+        elif self.gettrace():
+            pass
+        else:
+            if self.logfile:
+                sys.stdout = self.original_stdout
+                self.logfile.close()
+                self.logfile = False
+            else:
+                # Redirect stdout to file for logging if not in debug mode
+                self.logfile = open('logs/{}_{}_stdout.txt'.format(self.__class__.__name__, self.timestr), 'w')
+                sys.stdout = self.logfile
+
     def scatter(self):
-        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='attack_category')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='count', hue='target')
-        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='serror_rate', hue='attack_category')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='serror_rate', hue='target')
-        self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_host_count', hue='attack_category')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_host_count', hue='target')
-        self.visualize.scatter(self.X, cola='rerror_rate', colb='count', hue='attack_category')
         self.visualize.scatter(self.X, cola='rerror_rate', colb='count', hue='target')
-        self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='attack_category')
         self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='target')
 
     def convex_hull(self):
         buckets = self.y.unique()
-        self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='count')
-        self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='serror_rate')
-        self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='dst_host_srv_count', colb='dst_host_count')
-        self.visualize.convex_hull(self.X, buckets, 'attack_category', cola='rerror_rate', colb='count')
+        self.visualize.convex_hull(self.X, buckets, 'target', cola='dst_host_srv_count', colb='count')
+        self.visualize.convex_hull(self.X, buckets, 'target', cola='dst_host_srv_count', colb='serror_rate')
+        self.visualize.convex_hull(self.X, buckets, 'target', cola='dst_host_srv_count', colb='dst_host_count')
+        self.visualize.convex_hull(self.X, buckets, 'target', cola='rerror_rate', colb='count')
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')
@@ -100,9 +123,9 @@ class LinearSeparability:
         for key, value in ac.items():
             self.ac_count[key] = value
 
-    def set_X_y(self):
+    def set_X_y(self, target):
         self.X = self.sample
-        self.y = self.sample['attack_category']
+        self.y = self.sample[target]
 
     def sample_dataset(self, weights):
         self.sample = pd.DataFrame()
@@ -110,7 +133,6 @@ class LinearSeparability:
             samples = int(value * weights[key])
             df = self.full[self.full.attack_category == key].sample(samples, random_state=self.random_state)
             self.sample = self.sample.append(df)
-        self.set_X_y()
 
     def classifiers(self):
         le = preprocessing.LabelEncoder()

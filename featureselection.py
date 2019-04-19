@@ -34,7 +34,7 @@ def timer(title):
 class FeatureSelector:
     def __init__(self):
         self.random_state = 20
-        self.num_features = 15
+        self.num_features = 20
         self.model = None
         self.fit = None
         self.title = ''
@@ -75,8 +75,8 @@ class UnivariateSelector(FeatureSelector):
     def get_top_features(self, X, label):
         self.show_title(label)
         cols = self.model.get_support()
-        print(cols)
-        return X[X.columns[cols].tolist()]
+        print(X.columns[list(map(bool, cols))].tolist())
+        return X[X.columns[cols]]
 
 
 class RecursiveSelector(FeatureSelector):
@@ -92,7 +92,7 @@ class RecursiveSelector(FeatureSelector):
     def get_top_features(self, X, label):
         self.show_title(label)
         top_feats = X[X.columns[self.fit.support_].tolist()]
-        print(top_feats)
+        print(top_feats.columns.tolist())
         return top_feats
 
 
@@ -164,11 +164,11 @@ class RandomForestSelector(FeatureSelector):
 
 class FeatureSelection:
     def __init__(self):
-        # Redirect stdout to file for logging
-        timestr = time.strftime("%Y%m%d-%H%M%S")
-        original_stdout = sys.stdout
-        f = open('logs/featureselection_' + timestr + '_stdout.txt', 'w')
-        sys.stdout = f
+        self.logfile = False
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
 
         print(__doc__)
 
@@ -206,13 +206,29 @@ class FeatureSelection:
                     with timer('\nXGBoost scoring of features selected by ' + selector.__class__.__name__):
                         self.score_with_xgboost(x, self.y, selector.title)
 
-        sys.stdout = original_stdout
-        f.close()
+        self.log_file()
+        print('Finished')
+
+    def log_file(self):
+        if self.gettrace is None:
+            pass
+        elif self.gettrace():
+            pass
+        else:
+            if self.logfile:
+                sys.stdout = self.original_stdout
+                self.logfile.close()
+                self.logfile = False
+            else:
+                # Redirect stdout to file for logging if not in debug mode
+                self.logfile = open('logs/{}_{}_stdout.txt'.format(self.__class__.__name__, self.timestr), 'w')
+                sys.stdout = self.logfile
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')
         self.ds.target = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_target')
         self.full = pd.concat([self.ds.dataset, self.ds.target], axis=1)
+        self.ds.shape()
         self.ds.row_count_by_target('attack_category')
 
     def encode_scale(self):

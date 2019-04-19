@@ -22,11 +22,11 @@ def timer(title):
 class Preprocessing:
 
     def __init__(self):
-        # Redirect stdout to file for logging
-        timestr = time.strftime("%Y%m%d-%H%M%S")
-        original_stdout = sys.stdout
-        f = open('logs/preprocessing_' + timestr + '_stdout.txt', 'w')
-        sys.stdout = f
+        self.logfile = False
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
 
         print(__doc__)
 
@@ -64,8 +64,22 @@ class Preprocessing:
             self.filehandler.write_csv(self.ds.config['path'], self.ds.config['file'] + '_target', self.ds.target)
             self.ds.shape()
 
-        sys.stdout = original_stdout
-        f.close()
+        self.log_file()
+
+    def log_file(self):
+        if self.gettrace is None:
+            pass
+        elif self.gettrace():
+            pass
+        else:
+            if self.logfile:
+                sys.stdout = self.original_stdout
+                self.logfile.close()
+                self.logfile = False
+            else:
+                # Redirect stdout to file for logging if not in debug mode
+                self.logfile = open('logs/{}_{}_stdout.txt'.format(self.__class__.__name__, self.timestr), 'w')
+                sys.stdout = self.logfile
 
     def show_zeros(self):
         df = self.ds.dataset.iloc[:, :-3]
