@@ -73,8 +73,8 @@ class Visualize:
             bucket = df[df[target] == buckets[i]]
             bucket = bucket.iloc[:, [df.columns.get_loc(cola), df.columns.get_loc(colb)]].values
             hull = ConvexHull(bucket)
-            hull_color = tuple(np.atleast_2d(cmap(i/10.))[0])
-            plt.scatter(bucket[:, 0], bucket[:, 1], label=buckets[i], c=np.atleast_2d(cmap(i/10.)), alpha=0.4)
+            hull_color = self.class_colours[i]
+            plt.scatter(bucket[:, 0], bucket[:, 1], label=buckets[i], c=self.class_colours[i], alpha=0.4)
             for j in hull.simplices:
                 plt.plot(bucket[j, 0], bucket[j, 1], color=hull_color)
         plt.legend()
@@ -153,14 +153,14 @@ class Visualize:
 
         title = title + ' - ' + str(n_clusters) + ' Clusters'
         title_suffix = ''
-        if not is_pca:
+        if not is_pca and not is_kernelpca:
             title_suffix = ' - ' + df.columns[col_idx[0]] + ' vs ' + df.columns[col_idx[1]]
             if is_3d:
                 title_suffix = title_suffix + ' vs ' + df.columns[col_idx[2]]
 
         title = title + title_suffix
 
-        if is_pca:
+        if is_pca or is_kernelpca:
             plt.title(title, fontsize=16)
         else:
             plt.title(title, fontsize=12)
@@ -194,7 +194,7 @@ class Visualize:
         for i, j in enumerate(np.unique(y_set)):
             plt.scatter(x_set[y_set == j, 0], x_set[y_set == j, 1],
                         c=self.class_colours[i], label=j)
-        plt.title(title + ' - ' + cola + ' vs ' + colb, fontsize=16)
+        plt.title('{} - {} vs {}'.format(title, cola, colb), fontsize=16)
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
         plt.legend()

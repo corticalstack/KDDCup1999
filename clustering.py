@@ -3,6 +3,7 @@
 Clustering in 2D and 3D with/without PCA applied
 ================================================
 """
+import sys
 from contextlib import contextmanager
 import time
 import pandas as pd
@@ -23,7 +24,14 @@ def timer(title):
 
 class Clustering:
     def __init__(self):
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
+
         print(__doc__)
+
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
         self.visualize = Visualize()
@@ -40,9 +48,9 @@ class Clustering:
                            'num_access_files', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate',
                            'srv_diff_host_rate', 'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate',
                            'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
-        self.cluster_cols = [('dst_host_srv_count', 'serror_rate', 'count'),
-                             ('dst_host_srv_count', 'rerror_rate', 'serror_rate'),
-                             ('srv_diff_host_rate', 'srv_count', 'serror_rate')]
+        self.cluster_cols = [('count', 'diff_srv_rate', 'src_bytes'),
+                             ('src_bytes', 'dst_host_srv_count', 'dst_bytes'),
+                             ('serror_rate', 'dst_host_diff_srv_rate', 'flag')]
 
         with timer('\nLoading dataset'):
             self.load_data()
@@ -61,17 +69,36 @@ class Clustering:
                     with timer('\n3D clustering without PCA'):
                         self.cluster(idx=self.feature_idx, n_clusters=c, projection='3d')
         with timer('\nPlotting clusters applying PCA'):
-            for c in range(2, 7):
+            for c in range(2, 8):
                 with timer('\n2D clustering with PCA'):
                     self.cluster(idx=self.pca_idx, n_clusters=c)
                 with timer('\n3D clustering with PCA'):
                     self.cluster(idx=self.pca_idx, n_clusters=c, projection='3d')
-        with timer('\nPlotting clusters Kernel applying PCA'):
-            for c in range(2, 7):
-                with timer('\n2D clustering with Kernel PCA'):
-                    self.cluster(idx=self.kernelpca_idx, n_clusters=c)
-                with timer('\n3D clustering with Kernel PCA'):
-                    self.cluster(idx=self.kernelpca_idx, n_clusters=c, projection='3d')
+        # Commented out due to memory error
+        #with timer('\nPlotting clusters Kernel applying PCA'):
+        #    for c in range(2, 7):
+        #        with timer('\n2D clustering with Kernel PCA'):
+        #            self.cluster(idx=self.kernelpca_idx, n_clusters=c)
+        #        with timer('\n3D clustering with Kernel PCA'):
+        #            self.cluster(idx=self.kernelpca_idx, n_clusters=c, projection='3d')
+
+        self.log_file()
+        print('Finished')
+
+    def log_file(self):
+        if self.gettrace is None:
+            pass
+        elif self.gettrace():
+            pass
+        else:
+            if self.logfile:
+                sys.stdout = self.original_stdout
+                self.logfile.close()
+                self.logfile = False
+            else:
+                # Redirect stdout to file for logging if not in debug mode
+                self.logfile = open('logs/{}_{}_stdout.txt'.format(self.__class__.__name__, self.timestr), 'w')
+                sys.stdout = self.logfile
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')

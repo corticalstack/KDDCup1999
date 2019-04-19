@@ -83,6 +83,7 @@ class Linearity:
             self.classifiers()
 
         self.log_file()
+        print('Finished')
 
     def log_file(self):
         if self.gettrace is None:

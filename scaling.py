@@ -1,17 +1,18 @@
 """
-==========================================================
+===========================================================================
 Scaling techniques using KDD Cup 1999 IDS dataset
-==========================================================
-The following examples demonstrate various scaling techniques
-for a dataset in which classes are extremely imbalanced with heavily skewed features
+===========================================================================
+The following examples demonstrate various scaling techniques for a dataset
+in which classes are extremely imbalanced with heavily skewed features
 """
+import sys
 from contextlib import contextmanager
 import time
 import pandas as pd
 from sklearn.metrics import *
+from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, Normalizer, Binarizer, RobustScaler, \
     QuantileTransformer, PowerTransformer
-from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.model_selection import cross_val_predict
 from collections import OrderedDict
@@ -47,13 +48,6 @@ class Model:
         return cross_val_predict(self.base['model'], x, y, cv=10)
 
 
-class RandomForestClf(Model):
-    def __init__(self):
-        Model.__init__(self)
-        self.base['stext'] = 'RFC'
-        self.base['model'] = RandomForestClassifier(n_estimators=100, random_state = self.random_state)
-
-
 class XgboostClf(Model):
     def __init__(self):
         Model.__init__(self)
@@ -63,7 +57,14 @@ class XgboostClf(Model):
 
 class Scaling:
     def __init__(self):
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
+
         print(__doc__)
+
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
         self.visualize = Visualize()
@@ -72,16 +73,25 @@ class Scaling:
         self.full = None
         self.ac_count = {}
         self.scores = OrderedDict()
-        self.scale_cols = ['duration', 'dst_host_srv_count', 'count', 'dst_host_count', 'rerror_rate',
-                           'srv_diff_host_rate', 'srv_count']
+        self.scale_cols = ['count', 'diff_srv_rate', 'src_bytes', 'flag', 'dst_host_srv_count', 'dst_bytes',
+                           'serror_rate', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate', 'logged_in',
+                           'dst_host_count', 'hot', 'dst_host_srv_diff_host_rate', 'service', 'protocol_type',
+                           'wrong_fragment', 'srv_count', 'num_compromised', 'rerror_rate', 'duration']
 
         with timer('\nLoading dataset'):
             self.load_data()
             self.set_attack_category_count()
+        with timer('\nEncoding categoricals'):
+            le = preprocessing.LabelEncoder()
+            self.full['protocol_type'] = le.fit_transform(self.full['protocol_type'])
+            self.full['service'] = le.fit_transform(self.full['service'])
+            self.full['flag'] = le.fit_transform(self.full['flag'])
+        with timer('\nSetting X'):
             self.set_X()
             self.ds.shape()
+        with timer('\nDistribution Before Scaling'):
+            self.dist_before_scaling()
         with timer('\nScaling'):
-            self.before_scaling()
             for scaler in (StandardScaler(),
                            Normalizer(),
                            MinMaxScaler(feature_range=(0, 1)),
@@ -103,10 +113,29 @@ class Scaling:
         with timer('\nShowing Scores'):
             self.show_scores()
 
+        self.log_file()
+        print('Finished')
+
+    def log_file(self):
+        if self.gettrace is None:
+            pass
+        elif self.gettrace():
+            pass
+        else:
+            if self.logfile:
+                sys.stdout = self.original_stdout
+                self.logfile.close()
+                self.logfile = False
+            else:
+                # Redirect stdout to file for logging if not in debug mode
+                self.logfile = open('logs/{}_{}_stdout.txt'.format(self.__class__.__name__, self.timestr), 'w')
+                sys.stdout = self.logfile
+
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')
         self.ds.target = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_target')
         self.full = pd.concat([self.ds.dataset, self.ds.target], axis=1)
+        self.ds.shape()
         self.ds.row_count_by_target('attack_category')
 
     def set_attack_category_count(self):
@@ -120,8 +149,8 @@ class Scaling:
     def set_y(self, label):
         self.y = self.full[label]
 
-    def before_scaling(self):
-        self.visualize.kdeplot('Before Scaling', self.X, self.scale_cols)
+    def dist_before_scaling(self):
+        self.visualize.kdeplot('Distribution Before Scaling', self.X, self.scale_cols)
 
     def scale(self, scaler):
         x = self.X[self.scale_cols]
@@ -131,21 +160,20 @@ class Scaling:
             res_x = scaler.fit_transform(x)
 
         res_x = pd.DataFrame(res_x, columns=self.scale_cols)
-        title = 'After ' + scaler.__class__.__name__
+        title = 'Distribution After ' + scaler.__class__.__name__
         self.visualize.kdeplot(title, res_x, self.scale_cols)
         return title, res_x
 
     def model_and_score(self, scaler, res_x, title, label):
-        for model in (RandomForestClf(),
-                      XgboostClf()):
-            model.fit(res_x, self.y)
-            y_pred = model.predict(res_x, self.y)
-            self.visualize.confusion_matrix(self.y, y_pred, title + ' - ' + model.__class__.__name__ + ' - Label ' +
-                                            label)
-            self.register_score(scaler, model, res_x, self.y, y_pred, label)
+        model = XgboostClf()
+        model.fit(res_x, self.y)
+        y_pred = model.predict(res_x, self.y)
+        self.visualize.confusion_matrix(self.y, y_pred, '{} - {} - Label {}'.format(title, model.__class__.__name__,
+                                                                                    label))
+        self.register_score(scaler, model, res_x, self.y, y_pred, label)
 
     def register_score(self, scaler, clf, x, y, y_pred, label):
-        prefix = scaler.__class__.__name__ + '_' + clf.__class__.__name__ + ' - label ' + label
+        prefix = '{}_{} - Label {}'.format(scaler.__class__.__name__, clf.__class__.__name__, label)
 
         # Warnings caught to suppress issues with minority classes having no predicted label values
         with warnings.catch_warnings():

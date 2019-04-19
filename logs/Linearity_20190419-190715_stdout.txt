@@ -1,0 +1,28 @@
+
+============================================================================
+Linear Data analysis with scatter graphs, convex hull and linear classifiers
+============================================================================
+
+
+--- Shape
+	Row count:	 145581
+	Column count:	 28
+
+Loading dataset - done in 0s
+
+Encode and Scale dataset - done in 4s
+Sampling dataset with weights {'normal': 1, 'dos': 1, 'probe': 1, 'u2r': 1, 'r2l': 1}
+(145581, 29)
+Setting X, with y as target
+
+Plotting scatter graphs - done in 44s
+Sampling dataset with weights {'normal': 1, 'dos': 1, 'probe': 1, 'u2r': 1, 'r2l': 1}
+(145581, 29)
+Setting X, with y as target
+
+Plotting scatter graphs with convex hull - done in 27s
+Sampling dataset with weights {'normal': 0.01, 'dos': 0.01, 'probe': 0.2, 'u2r': 0.5, 'r2l': 0.5}
+(2374, 29)
+Setting X, with y as target
+
+Plotting linear separability with classifiers - done in 32s
