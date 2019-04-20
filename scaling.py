@@ -73,10 +73,12 @@ class Scaling:
         self.full = None
         self.ac_count = {}
         self.scores = OrderedDict()
-        self.scale_cols = ['count', 'diff_srv_rate', 'src_bytes', 'flag', 'dst_host_srv_count', 'dst_bytes',
-                           'serror_rate', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate', 'logged_in',
-                           'dst_host_count', 'hot', 'dst_host_srv_diff_host_rate', 'service', 'protocol_type',
-                           'wrong_fragment', 'srv_count', 'num_compromised', 'rerror_rate', 'duration']
+        self.scale_cols = ['duration', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment', 'urgent', 'hot',
+                           'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell', 'su_attempted',
+                           'num_root', 'num_file_creations', 'num_shells', 'num_access_files', 'is_guest_login',
+                           'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate', 'srv_diff_host_rate',
+                           'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate',
+                           'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
 
         with timer('\nLoading dataset'):
             self.load_data()

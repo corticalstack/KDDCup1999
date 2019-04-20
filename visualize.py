@@ -194,7 +194,8 @@ class Visualize:
         for i, j in enumerate(np.unique(y_set)):
             plt.scatter(x_set[y_set == j, 0], x_set[y_set == j, 1],
                         c=self.class_colours[i], label=j)
-        plt.title('{} - {} vs {}'.format(title, cola, colb), fontsize=16)
+        title = '{} - {} vs {}'.format(title, cola, colb)
+        plt.title(title, fontsize=14)
         plt.xlabel(cola, fontsize=12)
         plt.ylabel(colb, fontsize=12)
         plt.legend()

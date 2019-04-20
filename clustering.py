@@ -43,19 +43,20 @@ class Clustering:
         self.feature_idx = {0: 0, 1: 0, 2: 0}
         self.pca_idx = {0: 0, 1: 1, 2: 2, 'pca': True}
         self.kernelpca_idx = {0: 0, 1: 1, 2: 2, 'kpca': True}
-        self.scale_cols = ['duration', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment', 'hot', 'num_failed_logins',
-                           'logged_in', 'num_compromised', 'root_shell', 'num_file_creations', 'num_shells',
-                           'num_access_files', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate',
-                           'srv_diff_host_rate', 'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate',
+        self.scale_cols = ['duration', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment', 'urgent', 'hot',
+                           'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell', 'su_attempted',
+                           'num_root', 'num_file_creations', 'num_shells', 'num_access_files', 'is_guest_login',
+                           'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate', 'srv_diff_host_rate',
+                           'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate',
                            'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
         self.cluster_cols = [('count', 'diff_srv_rate', 'src_bytes'),
                              ('src_bytes', 'dst_host_srv_count', 'dst_bytes'),
+                             ('srv_diff_host_rate', 'srv_count', 'serror_rate'),
                              ('serror_rate', 'dst_host_diff_srv_rate', 'flag')]
 
         with timer('\nLoading dataset'):
             self.load_data()
             self.ds.shape()
-            self.set_attack_category_count()
         with timer('\nEncode and Scale dataset'):
             self.encode_scale()
         with timer('\nSetting X and y'):
@@ -105,11 +106,6 @@ class Clustering:
         self.ds.target = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_target')
         self.full = pd.concat([self.ds.dataset, self.ds.target], axis=1)
 
-    def set_attack_category_count(self):
-        ac = self.full['attack_category'].value_counts()
-        for key, value in ac.items():
-            self.ac_count[key] = value
-
     def encode_scale(self):
         # Encode categoricals
         le = preprocessing.LabelEncoder()
@@ -123,7 +119,7 @@ class Clustering:
 
     def set_x_y(self):
         self.x = self.full.iloc[:, :-2]
-        self.y = self.full['attack_category']
+        self.y = self.full['target']
 
     def set_indexes(self, cola, colb, colc):
         self.feature_idx[0] = self.x.columns.get_loc(cola)

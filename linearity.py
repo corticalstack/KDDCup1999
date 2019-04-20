@@ -44,9 +44,9 @@ class Linearity:
         self.sample = None
         self.full = None
         self.ac_count = {}
-        self.scale_cols = ['duration', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment', 'hot', 'num_failed_logins',
-                           'logged_in', 'num_compromised', 'root_shell', 'num_file_creations', 'num_shells',
-                           'num_access_files', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate',
+        self.scale_cols = ['duration', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment', 'urgent', 'hot', 'num_failed_logins',
+                           'logged_in', 'num_compromised', 'root_shell', 'su_attempted', 'num_root', 'num_file_creations', 'num_shells',
+                           'num_access_files', 'is_guest_login', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate',
                            'srv_diff_host_rate', 'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate',
                            'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
         self.full_weights = {'normal': 1, 'dos': 1, 'probe': 1, 'u2r': 1, 'r2l': 1}
@@ -107,6 +107,7 @@ class Linearity:
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_bytes', hue='target')
         self.visualize.scatter(self.X, cola='serror_rate', colb='rerror_rate', hue='target')
         self.visualize.scatter(self.X, cola='dst_host_srv_count', colb='dst_bytes', hue='target')
+        self.visualize.scatter(self.X, cola='srv_diff_host_rate', colb='srv_count', hue='target')
 
     def convex_hull(self):
         buckets = self.y.unique()
@@ -116,6 +117,7 @@ class Linearity:
         self.visualize.convex_hull(self.X, buckets, cola='dst_host_srv_count', colb='dst_bytes', target='target')
         self.visualize.convex_hull(self.X, buckets, cola='serror_rate', colb='rerror_rate', target='target')
         self.visualize.convex_hull(self.X, buckets, cola='dst_host_srv_count', colb='dst_bytes', target='target')
+        self.visualize.convex_hull(self.X, buckets, cola='srv_diff_host_rate', colb='srv_count', target='target')
 
     def load_data(self):
         self.ds.dataset = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_processed')
@@ -147,10 +149,11 @@ class Linearity:
 
         models = (Perceptron(max_iter=100, tol=1e-3, random_state=self.random_state),
                   LinearSVC(max_iter=500, random_state=self.random_state, tol=1e-5),
-                  SVC(kernel='rbf', gamma=1, C=1.0, random_state=self.random_state))
+                  SVC(kernel='rbf', gamma=5, C=10.0, random_state=self.random_state))
 
         titles = ('Perceptron', 'LinearSVC (linear kernel)', 'SVC with RBF kernel')
-        columns = [('srv_diff_host_rate', 'srv_count'), ('dst_host_srv_count', 'count')]
+        columns = [('srv_diff_host_rate', 'srv_count'), ('dst_host_srv_count', 'count'),
+                   ('dst_host_srv_count', 'dst_bytes')]
         for clf, title in zip(models, titles):
             for cola, colb in columns:
                 _x = self.X.loc[:, [cola, colb]]
