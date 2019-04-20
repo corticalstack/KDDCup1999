@@ -50,7 +50,7 @@ class Preprocessing:
         with timer('\nSetting target'):
             self.ds.set_target()
         with timer('\nEvaluating sparse features'):
-            self.ds.evaluate_sparse_features(engineer=True)
+            self.ds.evaluate_sparse_features(engineer=False)
         with timer('\nVisualising pairplot for selected columns'):
             self.visualize.pairplot(self.ds.dataset, self.ds.config['pairplot_cols'], self.ds.config['pairplot_target'])
         with timer('\nDropping columns'):

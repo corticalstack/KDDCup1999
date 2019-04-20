@@ -34,7 +34,7 @@ class Visualize:
         colormap = sns.diverging_palette(220, 10, as_cmap=True)
         dropSelf = np.zeros_like(corr)  # Drop self-correlations
         dropSelf[np.triu_indices_from(dropSelf)] = True
-        sns.heatmap(corr, cmap=colormap, annot=True, fmt=".2f", mask=dropSelf)
+        sns.heatmap(corr, cmap=colormap, annot=True, fmt=".2f", mask=dropSelf, cbar=False)
         plt.xticks(range(len(corr.columns)), corr.columns)
         plt.yticks(range(len(corr.columns)), corr.columns)
         plt.savefig(fname=self.fname('CorrHeatmap', title), dpi=300, format='png')

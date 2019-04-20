@@ -105,6 +105,8 @@ class Dataset:
         # Find index of feature columns with correlation greater than 0.95
         cols_to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] >=
                                                                            self.corr_threshold)]
+
+        cols_to_drop = list(set(cols_to_drop) - set(self.config['minority_cols_exclude_drop']))
         self.drop_cols(cols_to_drop)
 
 
@@ -127,6 +129,9 @@ class KDDCup1999(Dataset):
                        'level_01': ['attack_category', 'label'],
                        'drop_cols_01': ['is_host_login', 'num_outbound_cmds', 'label', 'target'],
                        'drop_cols_02': ['attack_category'],
+                       'minority_cols_exclude_drop': ['urgent', 'num_failed_logins', 'num_compromised', 'root_shell',
+                                                      'su_attempted', 'num_root', 'num_file_creations', 'num_shells',
+                                                      'num_access_files', 'is_guest_login'],
                        'onehotencode_cols': ['protocol_type', 'service', 'flag'],
                        'attack_category': ['normal', 'dos', 'u2r', 'r2l', 'probe'],
                        'pairplot_cols': ['duration', 'dst_host_diff_srv_rate', 'dst_host_srv_count', 'logged_in',
