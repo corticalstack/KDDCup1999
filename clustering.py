@@ -7,6 +7,7 @@ import sys
 from contextlib import contextmanager
 import time
 import pandas as pd
+import numpy as np
 from sklearn.cluster import KMeans
 from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
@@ -36,6 +37,7 @@ class Clustering:
         self.ds = KDDCup1999()
         self.visualize = Visualize()
         self.random_state = 20
+        self.clusters_stop = 11
         self.x = None
         self.y = None
         self.full = None
@@ -63,14 +65,14 @@ class Clustering:
             self.set_x_y()
         with timer('\nPlotting clusters for specific columns'):
             for cola, colb, colc in self.cluster_cols:
-                for c in range(2, 8):
+                for c in range(2, self.clusters_stop):
                     self.set_indexes(cola, colb, colc)
                     with timer('\n2D clustering without PCA'):
                         self.cluster(idx=self.feature_idx, n_clusters=c)
                     with timer('\n3D clustering without PCA'):
                         self.cluster(idx=self.feature_idx, n_clusters=c, projection='3d')
         with timer('\nPlotting clusters applying PCA'):
-            for c in range(2, 8):
+            for c in range(2, self.clusters_stop):
                 with timer('\n2D clustering with PCA'):
                     self.cluster(idx=self.pca_idx, n_clusters=c)
                 with timer('\n3D clustering with PCA'):

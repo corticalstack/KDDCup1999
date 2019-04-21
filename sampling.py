@@ -1,22 +1,21 @@
 """
 ===========================================================================
-Scaling techniques using KDD Cup 1999 IDS dataset
+Sampling techniques using KDD Cup 1999 IDS dataset
 ===========================================================================
-The following examples demonstrate various scaling techniques for a dataset
+The following examples demonstrate various sampling techniques for a dataset
 in which classes are extremely imbalanced with heavily skewed features
 """
 import sys
 from contextlib import contextmanager
 import time
 import pandas as pd
-from sklearn.metrics import *
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import PowerTransformer
 from sklearn import preprocessing
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, Normalizer, Binarizer, RobustScaler, \
-    QuantileTransformer, PowerTransformer
+from imblearn.over_sampling import RandomOverSampler, ADASYN, SMOTE, BorderlineSMOTE, SVMSMOTE, SMOTENC
 from xgboost import XGBClassifier
 from sklearn.model_selection import StratifiedKFold, cross_val_predict, cross_val_score
 from collections import OrderedDict
-import warnings
 from filehandler import Filehandler
 from dataset import KDDCup1999
 from visualize import Visualize
@@ -27,6 +26,11 @@ def timer(title):
     t0 = time.time()
     yield
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
+
+
+class Original:
+    def fit_resample(self, x, y):
+        return x, y
 
 
 class Model:
@@ -55,7 +59,7 @@ class XgboostClf(Model):
         self.base['model'] = XGBClassifier(n_estimators=100, random_state=self.random_state)
 
 
-class Scaling:
+class Sampling:
     def __init__(self):
         self.logfile = None
         self.gettrace = getattr(sys, 'gettrace', None)
@@ -84,33 +88,42 @@ class Scaling:
         with timer('\nLoading dataset'):
             self.load_data()
             self.set_attack_category_count()
-        with timer('\nEncoding categoricals'):
+        with timer('\nEncode and Scale dataset'):
+            # Encode categoricals
             le = preprocessing.LabelEncoder()
             self.full['protocol_type'] = le.fit_transform(self.full['protocol_type'])
             self.full['service'] = le.fit_transform(self.full['service'])
             self.full['flag'] = le.fit_transform(self.full['flag'])
+
+            # Scale
+            pt = PowerTransformer(method='yeo-johnson')
+            self.full[self.scale_cols] = pt.fit_transform(self.full[self.scale_cols])
         with timer('\nSetting X'):
             self.set_X()
             self.ds.shape()
-        with timer('\nDistribution Before Scaling'):
-            self.dist_before_scaling()
         with timer('\nScaling'):
-            for scaler in (StandardScaler(),
-                           Normalizer(),
-                           MinMaxScaler(feature_range=(0, 1)),
-                           Binarizer(threshold=0.0),
-                           RobustScaler(quantile_range=(25, 75)),
-                           PowerTransformer(method='yeo-johnson'),
-                           QuantileTransformer(output_distribution='normal')):
-                title, res_x = self.scale(scaler)
+            # Sampling options
+            for sampler in (Original(),
+                            RandomOverSampler(),
+                            SMOTE(random_state=0),
+                            ADASYN(random_state=self.random_state),
+                            BorderlineSMOTE(random_state=self.random_state, kind='borderline-1'),
+                            BorderlineSMOTE(random_state=self.random_state, kind='borderline-2'),
+                            SVMSMOTE(random_state=self.random_state),
+                            SMOTENC(categorical_features=[1, 2, 3], random_state=self.random_state)):
 
+                # JP _ TOP CJHECK _ SETTIMNG OF CORRECT TARGET LABEL AND Y AS WANT TO KEEP LABEL
                 label = 'attack_category'
                 self.set_y(label)
-                self.model_and_score(scaler, res_x, title, label)
+                res_x, res_y, title = self.sample(sampler)
+                self.model_and_score(res_x, res_y, title, label)
+                res_x.attack_category.value_counts().plot(kind='bar', title='Re-weighted Count (attack_category)')
+                plt.show()
 
                 label = 'target'
                 self.set_y(label)
-                self.model_and_score(scaler, res_x, title, label)
+                res_x, res_y, title = self.sample(sampler)
+                self.model_and_score(res_x, res_y, title, label)
 
         self.log_file()
         print('Finished')
@@ -148,30 +161,21 @@ class Scaling:
     def set_y(self, label):
         self.y = self.full[label]
 
-    def dist_before_scaling(self):
-        self.visualize.kdeplot('Distribution Before Scaling', self.X, self.scale_cols)
+    def sample(self, sampler):
+        title = sampler.__class__.__name__
+        res_x, res_y = sampler.fit_resample(self.X, self.y)
+        print('Shape after sampling with {} - x {},  y {}'.format(title, res_x.shape, res_y.shape))
+        return res_x, res_y, title
 
-    def scale(self, scaler):
-        x = self.X[self.scale_cols]
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            res_x = scaler.fit_transform(x)
-
-        res_x = pd.DataFrame(res_x, columns=self.scale_cols)
-        title = 'Distribution After ' + scaler.__class__.__name__
-        self.visualize.kdeplot(title, res_x, self.scale_cols)
-        return title, res_x
-
-    def model_and_score(self, scaler, res_x, title, label):
+    def model_and_score(self, res_x, res_y, title, label):
         clf = XGBClassifier(n_estimators=100, random_state=self.random_state)
         kfold = StratifiedKFold(n_splits=10, random_state=self.random_state)
-        results = cross_val_score(clf, res_x, self.y, cv=kfold)
+        results = cross_val_score(clf, res_x, res_y, cv=kfold)
         y_pred = cross_val_predict(clf, res_x, self.y, cv=10)
         print('{} - {} - XGBoost Accuracy: {:.2f}% (+/- {:.2f}'.format(title, label, results.mean() * 100,
                                                                        results.std() * 100))
-        self.visualize.confusion_matrix(self.y, y_pred, '{} - {} - Label {}'.format(title, clf.__class__.__name__,
-                                                                                    label))
+        self.visualize.confusion_matrix(res_y, y_pred, '{} - {} - Label {}'.format(title, clf.__class__.__name__,
+                                                                                   label))
 
 
-scaling = Scaling()
+sampling = Sampling()

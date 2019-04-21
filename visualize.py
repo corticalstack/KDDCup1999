@@ -13,7 +13,9 @@ class Visualize:
         self.folder = 'viz'
         self.random_state = 20
         self.class_colours = np.array(['blue', 'red', 'green', 'darkviolet', 'lime', 'darkorange', 'goldenrod',
-                                       'cyan', 'silver'])
+                                       'cyan', 'silver', 'deepskyblue', 'mediumspringgreen', 'gold'])
+        self.class_markers = np.array(['.', '^', '1', 'p', 'd', 'P', '+', 'v', 'x', 'X', '4', 'H'])
+
 
     def confusion_matrix(self, y, y_pred, title):
         plt.clf()
@@ -169,11 +171,11 @@ class Visualize:
         for c in range(n_clusters):
             if is_3d:
                 ax.scatter(df_x[y_clusters == c, col_idx[0]], df_x[y_clusters == c, col_idx[1]],
-                           df_x[y_clusters == c, col_idx[2]], alpha=0.2, edgecolors='none', s=30,
+                           df_x[y_clusters == c, col_idx[2]], alpha=0.2, edgecolors='none', s=20,
                            c=self.class_colours[c])
             else:
                 ax.scatter(df_x[y_clusters == c, col_idx[0]], df_x[y_clusters == c, col_idx[1]], alpha=0.2,
-                           edgecolors='none', s=30, c=self.class_colours[c])
+                           edgecolors='none', s=20, c=self.class_colours[c])
 
         plt.savefig(fname=self.fname('Scatter Cluster', title), dpi=300, format='png')
         plt.show()
