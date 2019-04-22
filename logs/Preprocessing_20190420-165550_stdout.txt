@@ -4,7 +4,7 @@ Preprocessing - Initial and extended data discovery with feature engineering
 ============================================================================
 
 
-Loading dataset - done in 12s
+Loading dataset - done in 1s
 
 Transforming dataset - done in 1s
 
@@ -614,7 +614,7 @@ For column num_root deleting 1 rows over value 814.15
 21             u2r             perl      3   0.002061
 22             u2r          rootkit     10   0.006869
 
-Initial dataset discovery - done in 16s
+Initial dataset discovery - done in 33s
 
 Setting target - done in 0s
 
@@ -1133,12 +1133,9 @@ is_guest_login 99.529%
 27      warezmaster             r2l               0     18   0.012364
 28      warezmaster             r2l               1      2   0.001374
 
---- Dropping columns
-['urgent', 'su_attempted']
+Evaluating sparse features - done in 0s
 
-Evaluating sparse features - done in 1s
-
-Visualising pairplot for selected columns - done in 100s
+Visualising pairplot for selected columns - done in 80s
 
 --- Dropping columns
 ['is_host_login', 'num_outbound_cmds', 'label', 'target']
@@ -1146,12 +1143,12 @@ Visualising pairplot for selected columns - done in 100s
 Dropping columns - done in 0s
 
 --- Dropping columns
-['num_root', 'is_guest_login', 'srv_serror_rate', 'srv_rerror_rate', 'same_srv_rate', 'dst_host_same_srv_rate', 'dst_host_serror_rate', 'dst_host_srv_serror_rate', 'dst_host_rerror_rate', 'dst_host_srv_rerror_rate']
+['srv_rerror_rate', 'dst_host_serror_rate', 'same_srv_rate', 'dst_host_srv_serror_rate', 'dst_host_rerror_rate', 'dst_host_srv_rerror_rate', 'dst_host_same_srv_rate', 'srv_serror_rate']
 
 Evaluating correlation - done in 20s
 
 --- Shape
 	Row count:	 145581
-	Column count:	 28
+	Column count:	 32
 
-Persisting transformed dataset and target - done in 2s
+Persisting transformed dataset and target - done in 3s

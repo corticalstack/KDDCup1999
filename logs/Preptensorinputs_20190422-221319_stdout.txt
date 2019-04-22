@@ -1,0 +1,22 @@
+
+===========================================================================
+Prepare tensor input files for neural network modelling
+===========================================================================
+The following prepares input for 2D tensors as input to neural networks
+
+
+--- Shape
+	Row count:	 145581
+	Column count:	 32
+
+Loading dataset - done in 0s
+
+Building 2d tensor - Tensor2d_type_1 - done in 56s
+
+Building 2d tensor - Tensor2d_type_2 - done in 82s
+
+Building 2d tensor - Tensor2d_type_3 - done in 38s
+
+Building 2d tensor - Tensor2d_type_4 - done in 36s
+
+Preparing Tensor Input Files - done in 213s

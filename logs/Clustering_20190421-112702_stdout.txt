@@ -1,0 +1,199 @@
+
+================================================
+Clustering in 2D and 3D with/without PCA applied
+================================================
+
+
+--- Shape
+	Row count:	 145581
+	Column count:	 32
+
+Loading dataset - done in 2s
+
+Encode and Scale dataset - done in 4s
+
+Setting X and y - done in 0s
+
+2D clustering without PCA - done in 5s
+
+3D clustering without PCA - done in 15s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 16s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 5s
+
+3D clustering without PCA - done in 15s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 16s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 8s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 4s
+
+3D clustering without PCA - done in 15s
+
+2D clustering without PCA - done in 5s
+
+3D clustering without PCA - done in 16s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 16s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+2D clustering without PCA - done in 4s
+
+3D clustering without PCA - done in 14s
+
+2D clustering without PCA - done in 5s
+
+3D clustering without PCA - done in 16s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 16s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 16s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 6s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 17s
+
+2D clustering without PCA - done in 7s
+
+3D clustering without PCA - done in 18s
+
+Plotting clusters for specific columns - done in 842s
+
+2D clustering with PCA - done in 5s
+
+3D clustering with PCA - done in 17s
+
+2D clustering with PCA - done in 7s
+
+3D clustering with PCA - done in 17s
+
+2D clustering with PCA - done in 7s
+
+3D clustering with PCA - done in 18s
+
+2D clustering with PCA - done in 8s
+
+3D clustering with PCA - done in 18s
+
+2D clustering with PCA - done in 7s
+
+3D clustering with PCA - done in 20s
+
+2D clustering with PCA - done in 8s
+
+3D clustering with PCA - done in 19s
+
+2D clustering with PCA - done in 8s
+
+3D clustering with PCA - done in 19s
+
+2D clustering with PCA - done in 8s
+
+3D clustering with PCA - done in 20s
+
+2D clustering with PCA - done in 8s
+
+3D clustering with PCA - done in 22s
+
+Plotting clusters applying PCA - done in 236s

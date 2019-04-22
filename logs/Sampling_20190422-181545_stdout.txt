@@ -1,0 +1,97 @@
+
+===========================================================================
+Sampling techniques using KDD Cup 1999 IDS dataset
+===========================================================================
+The following examples demonstrate various sampling techniques for a dataset
+in which classes are extremely imbalanced with heavily skewed features
+
+
+--- Shape
+	Row count:	 145581
+	Column count:	 32
+
+--- Row count by attack_category
+	normal: 87828 (60.329%)
+	dos: 54572 (37.486%)
+	probe: 2130 ( 1.463%)
+	r2l: 999 ( 0.686%)
+	u2r: 52 ( 0.036%)
+
+Loading dataset - done in 0s
+X shape with selected features and binary -  (145581, 30)
+X shape after encoding categoricals -  (145581, 107)
+Shape after sampling with Original - x (145581, 107),  y (145581,)
+X shape after sampling and removing target -  (145581, 106)
+y shape with attack_category after resample -  (145581,)
+normal    87828
+dos       54572
+probe      2130
+r2l         999
+u2r          52
+Name: attack_category, dtype: int64
+y shape with target after resample -  (145581,)
+X shape after scaling -  (145581, 106)
+Original - attack_category - XGBoost Accuracy: 98.33% (+/- 2.59
+Original - target - XGBoost Accuracy: 98.77% (+/- 1.30
+X shape with selected features and binary -  (145581, 30)
+X shape after encoding categoricals -  (145581, 107)
+Shape after sampling with RandomOverSampler - x (439140, 107),  y (439140,)
+X shape after sampling and removing target -  (439140, 106)
+y shape with attack_category after resample -  (439140,)
+u2r       87828
+probe     87828
+r2l       87828
+normal    87828
+dos       87828
+dtype: int64
+y shape with target after resample -  (439140,)
+X shape after scaling -  (439140, 106)
+RandomOverSampler - attack_category - XGBoost Accuracy: 99.07% (+/- 0.25
+RandomOverSampler - target - XGBoost Accuracy: 98.56% (+/- 0.87
+X shape with selected features and binary -  (145581, 30)
+X shape after encoding categoricals -  (145581, 107)
+Shape after sampling with SMOTE - x (439140, 107),  y (439140,)
+X shape after sampling and removing target -  (439140, 106)
+y shape with attack_category after resample -  (439140,)
+u2r       87828
+probe     87828
+r2l       87828
+normal    87828
+dos       87828
+dtype: int64
+y shape with target after resample -  (439140,)
+X shape after scaling -  (439140, 106)
+SMOTE - attack_category - XGBoost Accuracy: 99.22% (+/- 0.28
+SMOTE - target - XGBoost Accuracy: 98.81% (+/- 0.42
+X shape with selected features and binary -  (145581, 30)
+X shape after encoding categoricals -  (145581, 107)
+Shape after sampling with ADASYN - x (439039, 107),  y (439039,)
+X shape after sampling and removing target -  (439039, 106)
+y shape with attack_category after resample -  (439039,)
+normal    87828
+r2l       87818
+u2r       87817
+dos       87796
+probe     87780
+dtype: int64
+y shape with target after resample -  (439039,)
+X shape after scaling -  (439039, 106)
+ADASYN - attack_category - XGBoost Accuracy: 97.03% (+/- 1.09
+ADASYN - target - XGBoost Accuracy: 93.93% (+/- 4.46
+X shape with selected features and binary -  (145581, 30)
+X shape after encoding categoricals -  (145581, 107)
+Shape after sampling with BorderlineSMOTE - x (439140, 107),  y (439140,)
+X shape after sampling and removing target -  (439140, 106)
+y shape with attack_category after resample -  (439140,)
+u2r       87828
+probe     87828
+r2l       87828
+normal    87828
+dos       87828
+dtype: int64
+y shape with target after resample -  (439140,)
+X shape after scaling -  (439140, 106)
+BorderlineSMOTE - attack_category - XGBoost Accuracy: 99.22% (+/- 0.37
+BorderlineSMOTE - target - XGBoost Accuracy: 98.58% (+/- 0.40
+
+Scaling - done in 7520s

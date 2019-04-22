@@ -1,0 +1,46 @@
+
+===========================================================================
+Scaling techniques using KDD Cup 1999 IDS dataset
+===========================================================================
+The following examples demonstrate various scaling techniques for a dataset
+in which classes are extremely imbalanced with heavily skewed features
+
+
+--- Shape
+	Row count:	 145581
+	Column count:	 32
+
+--- Row count by attack_category
+	normal: 87828 (60.329%)
+	dos: 54572 (37.486%)
+	probe: 2130 ( 1.463%)
+	r2l: 999 ( 0.686%)
+	u2r: 52 ( 0.036%)
+
+Loading dataset - done in 2s
+
+Encoding categoricals - done in 0s
+
+--- Shape
+	Row count:	 145581
+	Column count:	 32
+
+Setting X - done in 1s
+
+Distribution Before Scaling - done in 10s
+Distribution After StandardScaler - attack_category - XGBoost Accuracy: 99.66% (+/- 0.28
+Distribution After StandardScaler - target - XGBoost Accuracy: 99.04% (+/- 1.76
+Distribution After Normalizer - attack_category - XGBoost Accuracy: 99.64% (+/- 0.25
+Distribution After Normalizer - target - XGBoost Accuracy: 98.99% (+/- 2.08
+Distribution After MinMaxScaler - attack_category - XGBoost Accuracy: 99.66% (+/- 0.28
+Distribution After MinMaxScaler - target - XGBoost Accuracy: 99.04% (+/- 1.76
+Distribution After Binarizer - attack_category - XGBoost Accuracy: 98.43% (+/- 0.60
+Distribution After Binarizer - target - XGBoost Accuracy: 98.12% (+/- 2.78
+Distribution After RobustScaler - attack_category - XGBoost Accuracy: 99.66% (+/- 0.28
+Distribution After RobustScaler - target - XGBoost Accuracy: 99.04% (+/- 1.76
+Distribution After PowerTransformer - attack_category - XGBoost Accuracy: 99.71% (+/- 0.28
+Distribution After PowerTransformer - target - XGBoost Accuracy: 99.09% (+/- 1.76
+Distribution After QuantileTransformer - attack_category - XGBoost Accuracy: 99.74% (+/- 0.21
+Distribution After QuantileTransformer - target - XGBoost Accuracy: 99.05% (+/- 1.77
+
+Scaling - done in 5867s

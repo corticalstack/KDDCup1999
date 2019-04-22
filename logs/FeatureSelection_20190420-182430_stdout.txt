@@ -1,0 +1,139 @@
+
+==============================================================================
+Feature selection techniques using KDD Cup 1999 IDS dataset
+==============================================================================
+For dataset with 5 attack categories in which classes are extremely imbalanced
+
+
+--- Shape
+	Row count:	 145581
+	Column count:	 32
+Index(['duration', 'protocol_type', 'service', 'flag', 'src_bytes',
+       'dst_bytes', 'land', 'wrong_fragment', 'urgent', 'hot',
+       'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell',
+       'su_attempted', 'num_root', 'num_file_creations', 'num_shells',
+       'num_access_files', 'is_guest_login', 'count', 'srv_count',
+       'serror_rate', 'rerror_rate', 'diff_srv_rate', 'srv_diff_host_rate',
+       'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate',
+       'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate',
+       'attack_category'],
+      dtype='object')
+
+--- Row count by attack_category
+	normal: 87828 (60.329%)
+	dos: 54572 (37.486%)
+	probe: 2130 ( 1.463%)
+	r2l: 999 ( 0.686%)
+	u2r: 52 ( 0.036%)
+
+Loading dataset - done in 6s
+
+--- Original - All Features - Label attack_category
+
+Fitting selector Original - done in 0s
+XGBoost Accuracy: 99.70% (+/- 0.39%)
+
+XGBoost scoring of features selected by Original - done in 701s
+
+--- Original - All Features - Label target
+
+Fitting selector Original - done in 0s
+XGBoost Accuracy: 99.00% (+/- 1.92%)
+
+XGBoost scoring of features selected by Original - done in 155s
+
+--- UnivariateSelector - With Chi-Squared - Label attack_category
+Top 20 features ['service', 'flag', 'src_bytes', 'wrong_fragment', 'hot', 'num_failed_logins', 'logged_in', 'root_shell', 'num_shells', 'is_guest_login', 'count', 'serror_rate', 'rerror_rate', 'diff_srv_rate', 'srv_diff_host_rate', 'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
+Low rank features ['dst_bytes', 'num_access_files', 'su_attempted', 'num_file_creations', 'protocol_type', 'duration', 'urgent', 'num_root', 'land', 'srv_count', 'num_compromised']
+Shape (145581, 20)
+
+Fitting selector UnivariateSelector - done in 0s
+XGBoost Accuracy: 99.57% (+/- 0.46%)
+
+XGBoost scoring of features selected by UnivariateSelector - done in 500s
+
+--- UnivariateSelector - With Chi-Squared - Label target
+Top 20 features ['duration', 'protocol_type', 'service', 'flag', 'src_bytes', 'wrong_fragment', 'hot', 'logged_in', 'num_access_files', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate', 'srv_diff_host_rate', 'dst_host_count', 'dst_host_srv_count', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
+Low rank features ['dst_bytes', 'num_shells', 'num_file_creations', 'su_attempted', 'num_compromised', 'urgent', 'root_shell', 'num_root', 'land', 'is_guest_login', 'num_failed_logins']
+Shape (145581, 20)
+
+Fitting selector UnivariateSelector - done in 0s
+XGBoost Accuracy: 99.12% (+/- 1.82%)
+
+XGBoost scoring of features selected by UnivariateSelector - done in 115s
+
+--- RecursiveSelector - Recursive With Log. Regr. - Label attack_category
+Top 20 features ['duration', 'protocol_type', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment', 'hot', 'num_failed_logins', 'logged_in', 'root_shell', 'is_guest_login', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'diff_srv_rate', 'dst_host_srv_count', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
+Low rank features ['flag', 'num_access_files', 'num_shells', 'num_file_creations', 'dst_host_count', 'su_attempted', 'service', 'srv_diff_host_rate', 'urgent', 'num_root', 'num_compromised']
+Shape (145581, 20)
+
+Fitting selector RecursiveSelector - done in 30s
+XGBoost Accuracy: 99.68% (+/- 0.36%)
+
+XGBoost scoring of features selected by RecursiveSelector - done in 528s
+
+--- RecursiveSelector - Recursive With Log. Regr. - Label target
+Top 20 features ['protocol_type', 'src_bytes', 'dst_bytes', 'wrong_fragment', 'hot', 'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell', 'num_root', 'num_file_creations', 'is_guest_login', 'count', 'srv_count', 'serror_rate', 'rerror_rate', 'dst_host_count', 'dst_host_srv_count', 'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate']
+Low rank features ['flag', 'num_access_files', 'num_shells', 'su_attempted', 'diff_srv_rate', 'service', 'srv_diff_host_rate', 'duration', 'urgent', 'land', 'dst_host_diff_srv_rate']
+Shape (145581, 20)
+
+Fitting selector RecursiveSelector - done in 6s
+XGBoost Accuracy: 99.12% (+/- 1.81%)
+
+XGBoost scoring of features selected by RecursiveSelector - done in 116s
+
+--- PCASelector - Principal Component Analysis - Label attack_category
+
+Fitting selector PCASelector - done in 1s
+XGBoost Accuracy: 99.17% (+/- 1.35%)
+
+XGBoost scoring of features selected by PCASelector - done in 1447s
+
+--- PCASelector - Principal Component Analysis - Label target
+
+Fitting selector PCASelector - done in 1s
+XGBoost Accuracy: 98.70% (+/- 2.15%)
+
+XGBoost scoring of features selected by PCASelector - done in 313s
+
+--- ExtraTreesSelector - Extra Trees Clf - Label attack_category
+Top 20 features ['serror_rate', 'flag', 'dst_host_srv_count', 'logged_in', 'count', 'dst_host_count', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate', 'diff_srv_rate', 'service', 'rerror_rate', 'protocol_type', 'wrong_fragment', 'hot', 'srv_diff_host_rate', 'dst_host_srv_diff_host_rate', 'src_bytes', 'srv_count', 'num_compromised', 'dst_bytes']
+Low rank features ['num_access_files', 'num_shells', 'num_file_creations', 'su_attempted', 'duration', 'urgent', 'root_shell', 'num_root', 'land', 'is_guest_login', 'num_failed_logins']
+Shape (145581, 20)
+
+Fitting selector ExtraTreesSelector - done in 4s
+XGBoost Accuracy: 99.72% (+/- 0.29%)
+
+XGBoost scoring of features selected by ExtraTreesSelector - done in 532s
+
+--- ExtraTreesSelector - Extra Trees Clf - Label target
+Top 20 features ['serror_rate', 'dst_host_srv_count', 'flag', 'logged_in', 'count', 'dst_host_count', 'rerror_rate', 'service', 'protocol_type', 'dst_host_same_src_port_rate', 'dst_host_diff_srv_rate', 'diff_srv_rate', 'wrong_fragment', 'hot', 'dst_host_srv_diff_host_rate', 'srv_diff_host_rate', 'src_bytes', 'num_compromised', 'srv_count', 'dst_bytes']
+Low rank features ['num_access_files', 'num_shells', 'num_file_creations', 'su_attempted', 'duration', 'urgent', 'root_shell', 'num_root', 'land', 'is_guest_login', 'num_failed_logins']
+Shape (145581, 20)
+
+Fitting selector ExtraTreesSelector - done in 4s
+XGBoost Accuracy: 99.14% (+/- 1.79%)
+
+XGBoost scoring of features selected by ExtraTreesSelector - done in 119s
+
+--- RandomForestSelector - Random Forest Clf - Label attack_category
+Top 20 features ['count', 'diff_srv_rate', 'src_bytes', 'dst_host_srv_count', 'flag', 'dst_bytes', 'dst_host_diff_srv_rate', 'serror_rate', 'service', 'dst_host_count', 'dst_host_srv_diff_host_rate', 'logged_in', 'dst_host_same_src_port_rate', 'protocol_type', 'srv_count', 'wrong_fragment', 'hot', 'num_compromised', 'rerror_rate', 'srv_diff_host_rate']
+Low rank features ['num_access_files', 'num_shells', 'num_file_creations', 'su_attempted', 'duration', 'urgent', 'root_shell', 'num_root', 'land', 'is_guest_login', 'num_failed_logins']
+Shape (145581, 20)
+
+Fitting selector RandomForestSelector - done in 6s
+XGBoost Accuracy: 99.72% (+/- 0.29%)
+
+XGBoost scoring of features selected by RandomForestSelector - done in 531s
+
+--- RandomForestSelector - Random Forest Clf - Label target
+Top 20 features ['count', 'diff_srv_rate', 'src_bytes', 'dst_host_srv_count', 'flag', 'dst_bytes', 'serror_rate', 'dst_host_diff_srv_rate', 'service', 'dst_host_count', 'dst_host_srv_diff_host_rate', 'logged_in', 'protocol_type', 'dst_host_same_src_port_rate', 'hot', 'srv_count', 'wrong_fragment', 'num_compromised', 'rerror_rate', 'srv_diff_host_rate']
+Low rank features ['num_access_files', 'num_shells', 'num_file_creations', 'su_attempted', 'duration', 'urgent', 'root_shell', 'num_root', 'land', 'is_guest_login', 'num_failed_logins']
+Shape (145581, 20)
+
+Fitting selector RandomForestSelector - done in 6s
+XGBoost Accuracy: 99.14% (+/- 1.79%)
+
+XGBoost scoring of features selected by RandomForestSelector - done in 121s
+
+Feature selection - done in 5237s
