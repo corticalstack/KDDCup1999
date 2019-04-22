@@ -23,13 +23,6 @@ class Model:
                     'cm': None}
 
 
-    def get_confusion_matrix(self):
-        return confusion_matrix(self.y_train, self.predictions)
-
-    def print_confusion_matrix(self):
-        print(
-            "Confusion matrix for {} - TN {}  FN {}  TP {}  FP {}".format('RFC', cm[0][0], cm[1][0],
-                                                                             cm[1][1], cm[0][1]))
 
     def set_dataset(self, folder, file):
         filehandler = Filehandler()
@@ -70,6 +63,64 @@ class DecisionTreeClf(Model):
         self.base['stext'] = 'DTC'
         self.base['model'] = DecisionTreeClassifier(random_state=self.random_state)
 
+
+class AnnPerceptron(Model):
+# Has only 1 neuron
+# See perceptron overview here https://medium.com/cracking-the-data-science-interview/a-gentle-introduction-to-neural-networks-for-machine-learning-d5f3f8987786
+
+class AnnMlpBinary(Model):
+    def __init__(self):
+        Model.__init__(self)
+        self.enabled = False
+        self.base['stext'] = 'ANNPCLF'
+        self.base['model'] = KerasClassifier(build_fn=self.create_network, epochs=10, batch_size=100, verbose=0)
+
+    def create_network(self):
+        model = Sequential()
+        model.add(Dense(64, input_dim=20, activation='relu'))
+        model.add(Dropout(0.5))
+        model.add(Dense(64, activation='relu'))
+        model.add(Dropout(0.5))
+        model.add(Dense(1, activation='sigmoid'))
+
+        model.compile(loss='binary_crossentropy',
+                      optimizer='rmsprop',
+                      metrics=['accuracy'])
+
+        model.fit(x_train, y_train,
+                  epochs=20,
+                  batch_size=128)
+        score = model.evaluate(x_test, y_test, batch_size=128)
+
+class AnnFeedForward(Model):
+
+   # Because this is a binary classification problem, one common choice is to use the sigmoid activation function in a one-unit output layer.
+
+    # Start neural network
+    network = models.Sequential()
+
+    # Add fully connected layer with a ReLU activation function
+    network.add(layers.Dense(units=16, activation='relu', input_shape=(number_of_features,)))
+
+    # Add fully connected layer with a ReLU activation function
+    network.add(layers.Dense(units=16, activation='relu'))
+
+    # Add fully connected layer with a sigmoid activation function
+    network.add(layers.Dense(units=1, activation='sigmoid'))
+
+    # Compile neural network
+    network.compile(loss='binary_crossentropy', # Cross-entropy
+                    optimizer='rmsprop', # Root Mean Square Propagation
+                    metrics=['accuracy']) # Accuracy performance metric
+
+
+    # Train neural network
+    history = network.fit(train_features,  # Features
+                          train_target,  # Target vector
+                          epochs=3,  # Number of epochs
+                          verbose=1,  # Print description after each epoch
+                          batch_size=100,  # Number of observations per batch
+                          validation_data=(test_features, test_target))  # Data for evaluation
 
 class ANNPerceptronClf(Model):
     def __init__(self):

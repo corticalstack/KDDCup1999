@@ -21,3 +21,4 @@ class Filehandler:
     def write_csv(self, folder, file, df):
         full_path = path.join(folder, file)
         df.to_csv(full_path, header=True, index=False)
+

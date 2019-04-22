@@ -90,8 +90,6 @@ class Preprocessing:
         self.visualize.heat_missing(df, 'Heatmap of features with missing values')
 
 
-
-
 preprocessing = Preprocessing()
 
 

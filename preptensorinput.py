@@ -2,17 +2,18 @@
 ===========================================================================
 Prepare tensor input files for neural network modelling
 ===========================================================================
-The following prepares input for 2D tensors as input to neural networks
+The following prepares 2D tensors as input to neural networks
 """
 import sys
 from contextlib import contextmanager
 import time
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import QuantileTransformer
-from imblearn.over_sampling import RandomOverSampler, ADASYN, SMOTE, BorderlineSMOTE, SVMSMOTE, SMOTENC
+from imblearn.over_sampling import SMOTE
 from filehandler import Filehandler
 from dataset import KDDCup1999
-from visualize import Visualize
+from sklearn.decomposition import PCA
 
 
 @contextmanager
@@ -22,13 +23,9 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class Original:
-    def fit_resample(self, x, y):
-        return x, y
-
-
 class Tensor2d:
     def __init__(self):
+        self.random_state = 20
         self.X = None
         self.y = None
 
@@ -41,6 +38,7 @@ class Tensor2d:
                      'is_guest_login']
 
         self.qt = QuantileTransformer(output_distribution='normal')
+        self.sampler = SMOTE(random_state=0)
 
     def set_X(self, df):
         self.X = df.loc[:, self.cols]
@@ -48,35 +46,83 @@ class Tensor2d:
     def encode_categoricals(self):
         self.X = pd.get_dummies(data=self.X, columns=['protocol_type', 'service', 'flag'])
 
-    def scale(self):
-        return self.qt.fit_transform(self.X)
+    def sample(self):
+        cols = self.X.columns
+        self.X, self.y = self.sampler.fit_resample(self.X, self.y)
+        if isinstance(self.X, np.ndarray):
+            self.X = pd.DataFrame(self.X, columns=cols)
 
     def scale(self):
-        self.X['target'] = self.y
+        cols = self.X.columns
+        self.X = self.qt.fit_transform(self.X)
+        if isinstance(self.X, np.ndarray):
+            self.X = pd.DataFrame(self.X, columns=cols)
 
-    def output_file(self, suffix):
-        self.filehandler.write_csv(self.ds.config['path'], self.ds.config['file'] + suffix, self.X)
+    def pca_transform(self):
+        pca = PCA(n_components=3, random_state=self.random_state)
+        self.X = pca.fit_transform(self.X)
+        if isinstance(self.X, np.ndarray):
+            self.X = pd.DataFrame(self.X, columns=['PCAF1', 'PCAF2', 'PCAF3'])
 
 
-class Tensor2d_type_a(Tensor2d):
+class Tensor2d_type_1(Tensor2d):
     def __int__(self):
-        self.sampler = SMOTE(random_state=0)
+        pass
 
     def set_y(self, df):
         self.y = df['target']
 
-    def resample(self):
-        self.X, self.y = self.sampler.fit_resample(self.X, self.y)
+    def pca(self):
+        pass
 
-    def output_file(self):
-        Tensor2d.output_file('type_a')
-
-
-class Tensor2d_type_b(Tensor2d):
-    pass
+    def add_target(self):
+        self.X['target'] = self.y
 
 
-class Preparetensorinputs:
+class Tensor2d_type_2(Tensor2d):
+    def __int__(self):
+        pass
+
+    def set_y(self, df):
+        self.y = df['attack_category']
+
+    def pca(self):
+        pass
+
+    def add_target(self):
+        self.X['attack_category'] = self.y
+
+
+class Tensor2d_type_3(Tensor2d):
+    def __int__(self):
+        pass
+
+    def set_y(self, df):
+        self.y = df['target']
+
+    def pca(self):
+        Tensor2d.pca_transform(self)
+
+    def add_target(self):
+
+        self.X['target'] = self.y
+
+
+class Tensor2d_type_4(Tensor2d):
+    def __int__(self):
+        pass
+
+    def set_y(self, df):
+        self.y = df['attack_category']
+
+    def pca(self):
+        Tensor2d.pca_transform(self)
+
+    def add_target(self):
+        self.X['attack_category'] = self.y
+
+
+class Preptensorinputs:
     def __init__(self):
         self.logfile = None
         self.gettrace = getattr(sys, 'gettrace', None)
@@ -88,8 +134,6 @@ class Preparetensorinputs:
 
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
-        self.visualize = Visualize()
-        self.random_state = 20
         self.X = None
         self.y = None
         self.full = None
@@ -98,18 +142,21 @@ class Preparetensorinputs:
             self.load_data()
 
         with timer('\nPreparing Tensor Input Files'):
-            print('Encoding categoricals')
-
-            for t2d in (Tensor2d_type_a(),
-                        Tensor2d_type_b()):
-
-                t2d.set_x(self.full)
-                t2d.encode_categoricals()
-                t2d.set_y(self.full)
-                t2d.resample()
-                t2d.scale()
-                t2d.append_target()
-                t2d.output_file()
+            for t2d in (Tensor2d_type_1(),
+                        Tensor2d_type_2(),
+                        Tensor2d_type_3(),
+                        Tensor2d_type_4(),
+                        ):
+                with timer('\nBuilding 2d tensor - ' + t2d.__class__.__name__):
+                    t2d.set_X(self.full)
+                    t2d.encode_categoricals()
+                    t2d.set_y(self.full)
+                    t2d.sample()
+                    t2d.scale()
+                    t2d.pca()
+                    t2d.add_target()
+                    self.filehandler.write_csv(self.ds.config['path'], self.ds.config['file'] + '_' +
+                                               t2d.__class__.__name__, t2d.X)
 
         self.log_file()
         print('Finished')
@@ -136,4 +183,5 @@ class Preparetensorinputs:
         self.ds.shape()
 
 
-preparetensorinputs = Preparetensorinputs()
+preptensorinputs = Preptensorinputs()
+

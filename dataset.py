@@ -204,3 +204,4 @@ class KDDCup1999(Dataset):
         self.row_count_by_target(self.config['target'])
         self.row_count_by_target('attack_category')
         self.row_target_count_by_group(self.config['level_01'], [self.config['target']])
+

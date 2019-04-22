@@ -64,3 +64,4 @@ class Database:
         self.db(mdb)
         self.collection(mcol)
         self.mongoCol.update_one(mfilter, mpayload)
+

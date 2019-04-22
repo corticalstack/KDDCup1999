@@ -206,3 +206,4 @@ class Visualize:
 
     def fname(self, prefix, title):
         return '{}/{} - {}.png'.format(self.folder, prefix, title)
+

@@ -93,7 +93,7 @@ class Sampling:
             # Sampling options
             for sampler in (Original(),
                             RandomOverSampler(),
-                            SMOTE(random_state=0),
+                            SMOTE(random_state=self.random_state),
                             ADASYN(random_state=self.random_state),
                             BorderlineSMOTE(random_state=self.random_state, kind='borderline-1')):
 
@@ -179,3 +179,4 @@ class Sampling:
 
 
 sampling = Sampling()
+
