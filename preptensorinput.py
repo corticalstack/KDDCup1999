@@ -70,20 +70,6 @@ class Tensor2d_type_1(Tensor2d):
         pass
 
     def set_y(self, df):
-        self.y = df['target']
-
-    def pca(self):
-        pass
-
-    def add_target(self):
-        self.X['target'] = self.y
-
-
-class Tensor2d_type_2(Tensor2d):
-    def __int__(self):
-        pass
-
-    def set_y(self, df):
         self.y = df['attack_category']
 
     def pca(self):
@@ -93,22 +79,7 @@ class Tensor2d_type_2(Tensor2d):
         self.X['attack_category'] = self.y
 
 
-class Tensor2d_type_3(Tensor2d):
-    def __int__(self):
-        pass
-
-    def set_y(self, df):
-        self.y = df['target']
-
-    def pca(self):
-        Tensor2d.pca_transform(self)
-
-    def add_target(self):
-
-        self.X['target'] = self.y
-
-
-class Tensor2d_type_4(Tensor2d):
+class Tensor2d_type_2(Tensor2d):
     def __int__(self):
         pass
 
@@ -143,10 +114,7 @@ class Preptensorinputs:
 
         with timer('\nPreparing Tensor Input Files'):
             for t2d in (Tensor2d_type_1(),
-                        Tensor2d_type_2(),
-                        Tensor2d_type_3(),
-                        Tensor2d_type_4(),
-                        ):
+                        Tensor2d_type_2()):
                 with timer('\nBuilding 2d tensor - ' + t2d.__class__.__name__):
                     t2d.set_X(self.full)
                     t2d.encode_categoricals()
@@ -157,6 +125,8 @@ class Preptensorinputs:
                     t2d.add_target()
                     self.filehandler.write_csv(self.ds.config['path'], self.ds.config['file'] + '_' +
                                                t2d.__class__.__name__, t2d.X)
+                    print('Shape of ' + self.ds.config['file'] + '_' + t2d.__class__.__name__ + ' : ' +
+                          str(t2d.X.shape))
 
         self.log_file()
         print('Finished')
