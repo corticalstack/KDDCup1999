@@ -38,6 +38,8 @@ class Model:
     def __init__(self):
         self.random_state = 20
         self.base = {'model': None}
+        self.binary_enabled = False
+        self.multi_enabled = False
         self.X = None
         self.y = None
         self.y_pred = {'binary': [], 'multi': []}
@@ -67,24 +69,23 @@ class Model:
 class RandomForestClf(Model):
     def __init__(self):
         Model.__init__(self)
-        self.binary_enabled = False
-        self.multi_enabled = False
+        self.binary_enabled = True
+        self.multi_enabled = True
         self.base['model'] = RandomForestClassifier(n_estimators=100, random_state=self.random_state)
 
 
 class DecisionTreeClf(Model):
     def __init__(self):
         Model.__init__(self)
-        self.binary_enabled = False
-        self.multi_enabled = False
+        self.binary_enabled = True
+        self.multi_enabled = True
         self.base['model'] = DecisionTreeClassifier(random_state=self.random_state)
 
 
 class AnnPerceptronBinary(Model):
     def __init__(self, n_features):
         Model.__init__(self)
-        self.binary_enabled = False
-        self.multi_enabled = False
+        self.binary_enabled = True
         self.epochs = 2
         self.batch_size = 100
         self.verbose = 0
@@ -108,7 +109,6 @@ class AnnPerceptronBinary(Model):
 class AnnPerceptronMulti(Model):
     def __init__(self, n_features):
         Model.__init__(self)
-        self.binary_enabled = False
         self.multi_enabled = True
         self.epochs = 2
         self.batch_size = 100
@@ -185,7 +185,8 @@ class Modelling:
             m.y_test[ctype] = pd.Series(m.y_test[ctype])
             m.y_pred[ctype] = pd.Series(m.y_pred[ctype])
             m.y_test[ctype] = m.y_test[ctype].astype(int)
-            self.scores(m.y_test[ctype], m.y_pred[ctype])
+            m.y_pred[ctype] = m.y_pred[ctype].astype(int)
+
 
             if ctype == 'Binary':
                 m.y_test[ctype] = self.series_map_ac_binary_to_label(m.y_test[ctype])
@@ -197,6 +198,7 @@ class Modelling:
 
             title = '{} - {} - {} '.format('CM', m.__class__.__name__, ctype)
             self.visualize.confusion_matrix(m.y_test[ctype], m.y_pred[ctype], title)
+            self.scores(m.y_test[ctype], m.y_pred[ctype])
 
         # self.log_file()
         print('Finished')
@@ -256,7 +258,7 @@ class Modelling:
 
     def scores(self, y_test, y_pred):
         print('Accuracy {}'.format(accuracy_score(y_test, y_pred)))
-        print('F1 {}'.format(classification_report(y_test, y_pred)))
+        print('F1 {}'.format(classification_report(y_test, y_pred, digits=10)))
 
 
 modelling = Modelling()
