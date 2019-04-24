@@ -13,11 +13,9 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import confusion_matrix, roc_auc_score
-from sklearn.decomposition import PCA
+from sklearn.metrics import *
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_predict, cross_val_score
-from sklearn.metrics import accuracy_score
 import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense
@@ -40,13 +38,11 @@ class Model:
     def __init__(self):
         self.random_state = 20
         self.base = {'model': None}
-        self.binary_enabled = False
-        self.multi_enabled = False
         self.X = None
         self.y = None
         self.y_pred = {'binary': [], 'multi': []}
         self.y_test = {'binary': [], 'multi': []}
-        self.splits = 3
+        self.splits = 2
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
     def fit(self, X_train, y_train):
@@ -91,6 +87,7 @@ class AnnPerceptronBinary(Model):
         self.multi_enabled = False
         self.epochs = 2
         self.batch_size = 100
+        self.verbose = 0
         self.n_features = n_features
         self.base['model'] = self.create_network()
 
@@ -101,7 +98,7 @@ class AnnPerceptronBinary(Model):
         return model
 
     def fit(self, X_train, y_train):
-        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size)
+        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
 
     def predict(self, X_test):
         y_pred = self.base['model'].predict_classes(X_test)
@@ -115,6 +112,7 @@ class AnnPerceptronMulti(Model):
         self.multi_enabled = True
         self.epochs = 2
         self.batch_size = 100
+        self.verbose = 0
         self.n_features = n_features
         self.base['model'] = self.create_network()
 
@@ -126,7 +124,7 @@ class AnnPerceptronMulti(Model):
 
     def fit(self, X_train, y_train):
         y_train = pd.get_dummies(y_train)  # for multi neural networks
-        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size)
+        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
 
     def predict(self, X_test):
         y_pred = self.base['model'].predict_classes(X_test)
@@ -154,7 +152,9 @@ class Modelling:
         self.y = None
         self.n_features = None
         self.random_state = 20
-
+        self.label_multi = {0: 'normal', '0': 'normal', 1: 'dos', '1': 'dos', 2: 'u2r', '2': 'u2r', 3: 'r2l',
+                            '3': 'r2l', 4: 'probe', '4': 'probe'}
+        self.label_binary = {0: 'good', '0': 'good', 1: 'bad', '1': 'bad'}
 
         with timer('\nLoading dataset'):
             self.load_data()
@@ -165,33 +165,41 @@ class Modelling:
 
         models = (RandomForestClf(), DecisionTreeClf(), AnnPerceptronBinary(self.n_features),
                   AnnPerceptronMulti(self.n_features))
-        classification_type = ('binary', 'multi')
+        classification_type = ('Binary', 'Multi')
 
-        score = False
         for m, ctype in itertools.product(models, classification_type):
-            if ctype == 'binary' and m.binary_enabled:
+            score = False
+            if ctype == 'Binary' and m.binary_enabled:
                 self.set_y_binary()
                 score = True
-            elif ctype == 'multi' and m.multi_enabled:
+            elif ctype == 'Multi' and m.multi_enabled:
                 self.set_y_multi()
                 score = True
 
             if not score:
                 continue
 
-            print('Processing {} {}'.format(m.__class__.__name__, ctype))
+            with timer('\nTraining and scoring {} - {} target'.format(m.__class__.__name__, ctype)):
+                m.score(self.X, self.y, ctype)
 
-            m.score(self.X, self.y, ctype)
-            yt = pd.Series(m.y_test[ctype])
-            yp = pd.Series(m.y_pred[ctype])
-            title = '{} - {} {} '.format('CM', m.__class__.__name__, ctype)
-            self.visualize.confusion_matrix(yt, yp, title)
+            m.y_test[ctype] = pd.Series(m.y_test[ctype])
+            m.y_pred[ctype] = pd.Series(m.y_pred[ctype])
+            m.y_test[ctype] = m.y_test[ctype].astype(int)
+            self.scores(m.y_test[ctype], m.y_pred[ctype])
+
+            if ctype == 'Binary':
+                m.y_test[ctype] = self.series_map_ac_binary_to_label(m.y_test[ctype])
+                m.y_pred[ctype] = self.series_map_ac_binary_to_label(m.y_pred[ctype])
+            else:
+                m.y_test[ctype] = self.series_map_ac_multi_to_label(m.y_test[ctype])
+                m.y_pred[ctype] = self.series_map_ac_multi_to_label(m.y_pred[ctype])
+
+
+            title = '{} - {} - {} '.format('CM', m.__class__.__name__, ctype)
+            self.visualize.confusion_matrix(m.y_test[ctype], m.y_pred[ctype], title)
 
         # self.log_file()
         print('Finished')
-
-    # look at loss=categorical_crossentropy for multiclass
-
 
     def log_file(self):
         if self.gettrace is None:
@@ -216,15 +224,15 @@ class Modelling:
 
     def set_y_binary(self):
         self.y = self.full.loc[:, ['attack_category']]
-        self.set_attack_category_to_binary()
+        self.df_map_ac_label_to_binary()
         self.y = self.y.values.ravel()
 
     def set_y_multi(self):
         self.y = self.full.loc[:, ['attack_category']]
-        self.set_attack_category_to_multi()
+        self.df_map_ac_label_to_multi()
         self.y = self.y.values.ravel()
 
-    def set_attack_category_to_binary(self):
+    def df_map_ac_label_to_binary(self):
         conditions = [
             (self.y['attack_category'] == 'normal'),
             (self.y['attack_category'] == 'dos') | (self.y['attack_category'] == 'u2r') |
@@ -232,15 +240,108 @@ class Modelling:
         ]
         self.y['attack_category'] = np.select(conditions, [0, 1])
 
-    def set_attack_category_to_multi(self):
-#        conditions = [
-#            (self.y['attack_category'] == 'normal'),
-#            (self.y['attack_category'] == 'dos'), (self.y['attack_category'] == 'u2r'),
-#            (self.y['attack_category'] == 'r2l'),  (self.y['attack_category'] == 'probe')
-#        ]
-#        self.y['attack_category'] = np.select(conditions, ['0', '1', '2', '3', '4'])
-        pass
+    def df_map_ac_label_to_multi(self):
+        conditions = [
+           (self.y['attack_category'] == 'normal'),
+           (self.y['attack_category'] == 'dos'), (self.y['attack_category'] == 'u2r'),
+           (self.y['attack_category'] == 'r2l'),  (self.y['attack_category'] == 'probe')
+        ]
+        self.y['attack_category'] = np.select(conditions, ['0', '1', '2', '3', '4'])  # string for get_dummies encoding
+
+    def series_map_ac_multi_to_label(self, s):
+        return s.map(self.label_multi)
+
+    def series_map_ac_binary_to_label(self, s):
+        return s.map(self.label_binary)
+
+    def scores(self, y_test, y_pred):
+        print('Accuracy {}'.format(accuracy_score(y_test, y_pred)))
+        print('F1 {}'.format(classification_report(y_test, y_pred)))
 
 
 modelling = Modelling()
 
+# class AnnFeedForward(Model):
+#
+#    # Because this is a binary classification problem, one common choice is to use the sigmoid activation function in a one-unit output layer.
+#
+#     # Start neural network
+#     network = models.Sequential()
+#
+#     # Add fully connected layer with a ReLU activation function
+#     network.add(layers.Dense(units=16, activation='relu', input_shape=(number_of_features,)))
+#
+#     # Add fully connected layer with a ReLU activation function
+#     network.add(layers.Dense(units=16, activation='relu'))
+#
+#     # Add fully connected layer with a sigmoid activation function
+#     network.add(layers.Dense(units=1, activation='sigmoid'))
+#
+#     # Compile neural network
+#     network.compile(loss='binary_crossentropy', # Cross-entropy
+#                     optimizer='rmsprop', # Root Mean Square Propagation
+#                     metrics=['accuracy']) # Accuracy performance metric
+#
+#
+#     # Train neural network
+#     history = network.fit(train_features,  # Features
+#                           train_target,  # Target vector
+#                           epochs=3,  # Number of epochs
+#                           verbose=1,  # Print description after each epoch
+#                           batch_size=100,  # Number of observations per batch
+#                           validation_data=(test_features, test_target))  # Data for evaluation
+#
+# class ANNPerceptronClf(Model):
+#     def __init__(self):
+#         Model.__init__(self)
+#         self.enabled = False
+#         self.base['stext'] = 'ANNPCLF'
+#         self.base['model'] = KerasClassifier(build_fn=self.create_network, epochs=10, batch_size=100, verbose=0)
+#
+#     def create_network(self):
+#         network = Sequential()
+#
+#         # Input layer with inputs matching 0 axis of tensor, hidden layer with 1 neuron
+#         network.add(Dense(output_dim=1, init='uniform', activation='relu', input_dim=self.X_train.shape[1]))
+#
+#         # Output layer - sigmoid good for binary classification
+#         network.add(Dense(output_dim=1, init='uniform', activation='sigmoid'))
+#
+#         # Binary cross entropy good for binary classification
+#         network.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+#
+#         return network
+#
+#     def set_dataset(self, folder, file):
+#         Model.set_dataset(self, folder, file)
+#
+#     def fit(self):
+#         self.base['model'].fit(self.X_train, self.y_train)
+#
+#     def predict(self):
+#         self.predictions = self.base['model'].predict(self.X_train)
+#         self.predictions = (self.predictions > 0.5)
+
+# class AnnMlpBinary(Model):
+#     def __init__(self):
+#         Model.__init__(self)
+#         self.enabled = False
+#         self.base['stext'] = 'ANNPCLF'
+#         self.base['model'] = KerasClassifier(build_fn=self.create_network, epochs=10, batch_size=100, verbose=0)
+#
+#     def create_network(self):
+#         model = Sequential()
+#         model.add(Dense(64, input_dim=20, activation='relu'))
+#         model.add(Dropout(0.5))
+#         model.add(Dense(64, activation='relu'))
+#         model.add(Dropout(0.5))
+#         model.add(Dense(1, activation='sigmoid'))
+#
+#         model.compile(loss='binary_crossentropy',
+#                       optimizer='rmsprop',
+#                       metrics=['accuracy'])
+#
+#         model.fit(x_train, y_train,
+#                   epochs=20,
+#                   batch_size=128)
+#         score = model.evaluate(x_test, y_test, batch_size=128)
