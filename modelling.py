@@ -12,18 +12,17 @@ import time
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import *
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_predict, cross_val_score
 import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Dense
+from keras import models, layers
 from keras.regularizers import l2
 from filehandler import Filehandler
 from dataset import KDDCup1999
 from visualize import Visualize
 import itertools
+from tensorflow.python.keras.callbacks import TensorBoard
 
 
 @contextmanager
@@ -69,23 +68,16 @@ class Model:
 class RandomForestClf(Model):
     def __init__(self):
         Model.__init__(self)
-        self.binary_enabled = True
-        self.multi_enabled = True
+        self.binary_enabled = False
+        self.multi_enabled = False
         self.base['model'] = RandomForestClassifier(n_estimators=100, random_state=self.random_state)
 
 
-class DecisionTreeClf(Model):
-    def __init__(self):
-        Model.__init__(self)
-        self.binary_enabled = True
-        self.multi_enabled = True
-        self.base['model'] = DecisionTreeClassifier(random_state=self.random_state)
-
-
-class AnnPerceptronBinary(Model):
+# Single Layer Perceptron - Binary Classification
+class AnnSLPBinary(Model):
     def __init__(self, n_features):
         Model.__init__(self)
-        self.binary_enabled = True
+        self.binary_enabled = False
         self.epochs = 2
         self.batch_size = 100
         self.verbose = 0
@@ -93,8 +85,8 @@ class AnnPerceptronBinary(Model):
         self.base['model'] = self.create_network()
 
     def create_network(self):
-        model = Sequential()
-        model.add(Dense(units=1, activation='sigmoid', kernel_regularizer=l2(0.), input_shape=(self.n_features,)))
+        model = models.Sequential()
+        model.add(layers.Dense(1, activation='sigmoid', input_shape=(self.n_features,)))
         model.compile(loss='binary_crossentropy', optimizer='sgd', metrics=['accuracy'])
         return model
 
@@ -106,10 +98,11 @@ class AnnPerceptronBinary(Model):
         return y_pred.ravel()
 
 
-class AnnPerceptronMulti(Model):
+# Multi Layer Perceptron - Binary Classification
+class AnnMLPBinary(Model):
     def __init__(self, n_features):
         Model.__init__(self)
-        self.multi_enabled = True
+        self.binary_enabled = False
         self.epochs = 2
         self.batch_size = 100
         self.verbose = 0
@@ -117,14 +110,48 @@ class AnnPerceptronMulti(Model):
         self.base['model'] = self.create_network()
 
     def create_network(self):
-        model = Sequential()
-        model.add(Dense(units=5, activation='sigmoid', kernel_regularizer=l2(0.), input_shape=(self.n_features,)))
-        model.compile(loss='categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
+        model = models.Sequential()
+        model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
+        model.add(layers.Dense(self.n_features, activation='relu'))
+        model.add(layers.Dense(1, activation='sigmoid'))
+        model.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+        return model
+
+    def fit(self, X_train, y_train):
+        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
+
+    def predict(self, X_test):
+        y_pred = self.base['model'].predict_classes(X_test)
+        return y_pred.ravel()
+
+
+class AnnMLPMulti(Model):
+    def __init__(self, n_features):
+        Model.__init__(self)
+        self.multi_enabled = True
+        self.epochs = 20
+        self.batch_size = 100
+        self.verbose = 0
+        self.n_features = n_features
+        self.base['model'] = self.create_network()
+
+    def create_network(self):
+        model = models.Sequential()
+        model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
+        model.add(layers.Dense(self.n_features, activation='relu'))
+        model.add(layers.Dense(5, activation='softmax'))
+        tensorboard = TensorBoard(log_dir='logs/{}'.format(time))
+
+        model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+
+
         return model
 
     def fit(self, X_train, y_train):
         y_train = pd.get_dummies(y_train)  # for multi neural networks
-        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
+        tensorboard = TensorBoard(log_dir='logs/tensorboard/{}'.format(time.strftime("%Y%m%d-%H%M%S")))
+        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
+                               callbacks=[tensorboard])
 
     def predict(self, X_test):
         y_pred = self.base['model'].predict_classes(X_test)
@@ -163,8 +190,8 @@ class Modelling:
             self.set_X()
             self.n_features = self.X.shape[1]
 
-        models = (RandomForestClf(), DecisionTreeClf(), AnnPerceptronBinary(self.n_features),
-                  AnnPerceptronMulti(self.n_features))
+        models = (RandomForestClf(), AnnSLPBinary(self.n_features), AnnMLPBinary(self.n_features),
+                  AnnMLPMulti(self.n_features))
         classification_type = ('Binary', 'Multi')
 
         for m, ctype in itertools.product(models, classification_type):
@@ -199,6 +226,9 @@ class Modelling:
             title = '{} - {} - {} '.format('CM', m.__class__.__name__, ctype)
             self.visualize.confusion_matrix(m.y_test[ctype], m.y_pred[ctype], title)
             self.scores(m.y_test[ctype], m.y_pred[ctype])
+
+    # Append the scores to a scores array. I could then do an np.mean(scores) to get the mean(average) from all the kfolds
+    # save the epoch number and gfold number if possible as well, to get a per/epoch score
 
         # self.log_file()
         print('Finished')
