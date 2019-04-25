@@ -48,7 +48,6 @@ class AnnMLPMulti:
         self.visualize = Visualize()
 
         # Datasets
-        self.full = None
         self.X = None
         self.y = None
         self.X_train = None
@@ -56,6 +55,7 @@ class AnnMLPMulti:
         self.y_train = None
         self.y_test = None
         self.n_features = None
+        self.label_multi = {0: 'normal', 1: 'dos', 2: 'u2r', 3: 'r2l', 4: 'probe'}
 
         # K-fold validation
         self.splits = 2
@@ -66,48 +66,55 @@ class AnnMLPMulti:
         self.batch_size = 100
         self.verbose = 0
 
-        self.label_multi = {0: 'normal', '0': 'normal', 1: 'dos', '1': 'dos', 2: 'u2r', '2': 'u2r', 3: 'r2l', '3':
-            'r2l', 4: 'probe', '4': 'probe'}
+        # Scores
+        self.metric_loss = []
+        self.metric_acc = []
+        self.metric_val_loss = []
+        self.metric_val_acc = []
 
-        with timer('\nLoading dataset'):
+        with timer('\nPreparing dataset'):
             self.load_data()
-
-        with timer('\nSetting X and y'):
-            self.set_y_multi()
+            self.set_y()
             self.remove_target_from_X()
             self.n_features = self.X.shape[1]
-        with timer('\nSetting dataset train, validation and test splits'):
             self.train_test_split()
-            self.full = None
-            self.X = None
-            self.y = None
 
 
-            validation_scores = []
+
             agg_ypred = []
             agg_ytest = []
+        with timer('\nTraining & validating model with kfold'):
+            # Train model on K-1 and validate using remaining fold
             index = 0
             for train, val in self.kfold.split(self.X_train, self.y_train):
                 index += 1
                 model = self.get_model()
-                y_train_onehotencoded = pd.get_dummies(self.y_train[train])  # for multi neural networks
-                y_val_onehotencoded = pd.get_dummies(self.y_train[val])  # for multi neural networks
+                y_train_onehotencoded = pd.get_dummies(self.y_train[train])
+                y_val_onehotencoded = pd.get_dummies(self.y_train[val])
+
                 history = model.fit(self.X_train.iloc[train], y_train_onehotencoded,
                                     validation_data=(self.X_train.iloc[val], y_val_onehotencoded),
                                     epochs=self.epochs, batch_size=self.batch_size)
-                history_dict = history.history
-                loss = history.history['loss']
-                val_loss = history.history['val_loss']
-                validation_scores.append((index, loss, val_loss))
+                self.metric_loss.append(history.history['loss'])
+                self.metric_acc.append(history.history['acc'])
+                self.metric_val_loss.append(history.history['val_loss'])
+                self.metric_val_acc.append(history.history['val_acc'])
 
-            print(validation_scores)
+            print('Training mean loss', np.mean(self.metric_loss))
+            print('Training mean acc', np.mean(self.metric_acc))
+            print('Validation mean loss', np.mean(self.metric_val_loss))
+            print('Validation mean acc', np.mean(self.metric_val_acc))
+
+        with timer('\nTesting model on unseen test set'):
             model = self.get_model()
             y_test_onehotencoded = pd.get_dummies(self.y_test)
             y_train_onehotencoded = pd.get_dummies(self.y_train)
+
+            # Train model on complete train set and validate with unseen test set
             history = model.fit(self.X_train, y_train_onehotencoded, validation_data=(self.X_test, y_test_onehotencoded),
                                 epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
-
-
+            print('Test loss', np.mean(history.history['loss']))
+            print('Test acc', np.mean(history.history['acc']))
 
                 #y_pred = self.predict(X.loc[test])
                 #agg_ypred.append(y_pred)
@@ -194,9 +201,8 @@ class AnnMLPMulti:
     def load_data(self):
         self.X = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_Tensor2d_type_1')
 
-    def set_y_multi(self):
+    def set_y(self):
         self.y = self.X['attack_category']
-        #self.df_map_ac_label_to_multi()
         self.y = self.y.values.ravel()
 
     def remove_target_from_X(self):
