@@ -13,7 +13,8 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import train_test_split, StratifiedKFold
+
 from sklearn.model_selection import cross_val_predict, cross_val_score
 import tensorflow as tf
 from keras import models, layers
@@ -133,9 +134,9 @@ class AnnMLPMulti(Model):
         self.batch_size = 100
         self.verbose = 0
         self.n_features = n_features
-        self.base['model'] = self.create_network()
+        self.base = {}
 
-    def create_network(self):
+    def get_model(self):
         model = models.Sequential()
         model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
         model.add(layers.Dense(self.n_features, activation='relu'))
@@ -143,14 +144,12 @@ class AnnMLPMulti(Model):
         tensorboard = TensorBoard(log_dir='logs/{}'.format(time))
 
         model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
-
-
         return model
 
     def fit(self, X_train, y_train):
         y_train = pd.get_dummies(y_train)  # for multi neural networks
         tensorboard = TensorBoard(log_dir='logs/tensorboard/{}'.format(time.strftime("%Y%m%d-%H%M%S")))
-        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
+        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size,
                                callbacks=[tensorboard])
 
     def predict(self, X_test):
@@ -177,6 +176,10 @@ class Modelling:
         self.full = None
         self.X = None
         self.y = None
+        self.X_train = None
+        self.X_test = None
+        self.y_train = None
+        self.y_test = None
         self.n_features = None
         self.random_state = 20
         self.label_multi = {0: 'normal', '0': 'normal', 1: 'dos', '1': 'dos', 2: 'u2r', '2': 'u2r', 3: 'r2l',
@@ -207,7 +210,9 @@ class Modelling:
                 continue
 
             with timer('\nTraining and scoring {} - {} target'.format(m.__class__.__name__, ctype)):
-                m.score(self.X, self.y, ctype)
+                m.base['model'] = m.get_model()
+                self.train_test_split()
+                m.score(self.X_train, self.y_train, ctype)
 
             m.y_test[ctype] = pd.Series(m.y_test[ctype])
             m.y_pred[ctype] = pd.Series(m.y_pred[ctype])
@@ -263,6 +268,10 @@ class Modelling:
         self.y = self.full.loc[:, ['attack_category']]
         self.df_map_ac_label_to_multi()
         self.y = self.y.values.ravel()
+
+    def train_test_split(self):
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.30,
+                                                                                random_state=self.random_state)
 
     def df_map_ac_label_to_binary(self):
         conditions = [
