@@ -33,41 +33,6 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-
-
-
-def f1(y_true, y_pred):
-    def recall(y_true, y_pred):
-        """Recall metric.
-
-        Only computes a batch-wise average of recall.
-
-        Computes the recall, a metric for multi-label classification of
-        how many relevant items are selected.
-        """
-        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-        recall = true_positives / (possible_positives + K.epsilon())
-        return recall
-
-    def precision(y_true, y_pred):
-        """Precision metric.
-
-        Only computes a batch-wise average of precision.
-
-        Computes the precision, a metric for multi-label classification of
-        how many selected items are relevant.
-        """
-        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-        precision = true_positives / (predicted_positives + K.epsilon())
-        return precision
-
-    precision = precision(y_true, y_pred)
-    recall = recall(y_true, y_pred)
-    return 2 * ((precision * recall) / (precision + recall + K.epsilon()))
-
-
 class AnnMLPMulti:
     def __init__(self):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
@@ -98,7 +63,6 @@ class AnnMLPMulti:
         self.label_map_int_2_string = {0: 'normal', 1: 'dos', 2: 'u2r', 3: 'r2l', 4: 'probe'}
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
 
-
         # K-fold validation
         self.splits = 2
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
@@ -111,8 +75,13 @@ class AnnMLPMulti:
         # Scores
         self.metric_loss = []
         self.metric_acc = []
+        self.metric_dr = []
+        self.metric_far = []
+
         self.metric_val_loss = []
         self.metric_val_acc = []
+        self.metric_val_dr = []
+        self.metric_val_far = []
 
         with timer('\nPreparing dataset'):
             self.load_data()
@@ -138,13 +107,21 @@ class AnnMLPMulti:
 
                 self.metric_loss.append(self.history.history['loss'])
                 self.metric_acc.append(self.history.history['acc'])
+                self.metric_dr.append(self.history.history['dr'])
+                self.metric_far.append(self.history.history['far'])
                 self.metric_val_loss.append(self.history.history['val_loss'])
                 self.metric_val_acc.append(self.history.history['val_acc'])
+                self.metric_val_dr.append(self.history.history['val_dr'])
+                self.metric_val_far.append(self.history.history['val_far'])
 
             print('Training mean loss', np.mean(self.metric_loss))
             print('Training mean acc', np.mean(self.metric_acc))
+            print('Training mean dr', np.mean(self.metric_dr))
+            print('Training mean far', np.mean(self.metric_far))
             print('Validation mean loss', np.mean(self.metric_val_loss))
             print('Validation mean acc', np.mean(self.metric_val_acc))
+            print('Validation mean dr', np.mean(self.metric_val_dr))
+            print('Validation mean far', np.mean(self.metric_val_far))
 
         with timer('\nTesting model on unseen test set'):
             self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test_{}'.format(time))
@@ -163,6 +140,8 @@ class AnnMLPMulti:
 
             print('Test loss', np.mean(self.history.history['loss']))
             print('Test acc', np.mean(self.history.history['acc']))
+            print('Test dr', np.mean(self.history.history['dr']))
+            print('Test far', np.mean(self.history.history['far']))
             print('Accuracy {}'.format(accuracy_score(self.y_test, y_pred)))
 
             # Remap to string class targets
@@ -183,10 +162,9 @@ class AnnMLPMulti:
             self.get_fp_from_cm(cm)
             self.get_fn_from_cm(cm)
 
-
-
             epochs = range(1, len(self.history.history['loss']) + 1)
 
+            # Plot loss
             plt.clf()
             fig, ax = plt.subplots(figsize=(15, 8))
             plt.style.use('ggplot')
@@ -201,6 +179,7 @@ class AnnMLPMulti:
             plt.legend()
             plt.show()
 
+            # Plot accuracy
             plt.clf()
             fig, ax = plt.subplots(figsize=(15, 8))
             plt.style.use('ggplot')
@@ -212,6 +191,36 @@ class AnnMLPMulti:
             plt.title('Training, validation and test accuracy', fontsize=18)
             plt.xlabel('Epochs', fontsize=14)
             plt.ylabel('Accuracy', fontsize=14)
+            plt.legend()
+            plt.show()
+
+            # Plot detection rate
+            plt.clf()
+            fig, ax = plt.subplots(figsize=(15, 8))
+            plt.style.use('ggplot')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.tick_params(axis='both', which='major', labelsize=12)
+            ax.plot(epochs, np.mean(self.metric_dr, axis=0), 'g', label='Training detection rate')
+            ax.plot(epochs, np.mean(self.metric_val_dr, axis=0), 'b', label='Validation detection rate')
+            ax.plot(epochs, self.history.history['dr'], 'r', label='Test detection rate')
+            plt.title('Training, validation and test detection rate', fontsize=18)
+            plt.xlabel('Epochs', fontsize=14)
+            plt.ylabel('Detection Rate', fontsize=14)
+            plt.legend()
+            plt.show()
+
+            # Plot false alarm rate
+            plt.clf()
+            fig, ax = plt.subplots(figsize=(15, 8))
+            plt.style.use('ggplot')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.tick_params(axis='both', which='major', labelsize=12)
+            ax.plot(epochs, np.mean(self.metric_far, axis=0), 'g', label='Training false alarm rate')
+            ax.plot(epochs, np.mean(self.metric_val_far, axis=0), 'b', label='Validation false alarm rate')
+            ax.plot(epochs, self.history.history['far'], 'r', label='Test false alarm rate')
+            plt.title('Training, validation and test false alarm rate', fontsize=18)
+            plt.xlabel('Epochs', fontsize=14)
+            plt.ylabel('False Alarm Rate', fontsize=14)
             plt.legend()
             plt.show()
 
@@ -275,8 +284,6 @@ class AnnMLPMulti:
             fn.append(sum(cm[i, :]) - cm[i, i])
         print('fn', np.sum(fn))
         return np.sum(fn)
-
-
 
     def log_file(self):
         if self.gettrace is None:
