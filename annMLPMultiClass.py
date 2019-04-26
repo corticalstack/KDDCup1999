@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import *
 from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.metrics import confusion_matrix
 import tensorflow as tf
 from keras import models, layers
 from filehandler import Filehandler
@@ -21,6 +22,8 @@ from visualize import Visualize
 import itertools
 from tensorflow.python.keras.callbacks import TensorBoard
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+import keras.backend as K
 
 
 @contextmanager
@@ -28,6 +31,41 @@ def timer(title):
     t0 = time.time()
     yield
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
+
+
+
+
+
+def f1(y_true, y_pred):
+    def recall(y_true, y_pred):
+        """Recall metric.
+
+        Only computes a batch-wise average of recall.
+
+        Computes the recall, a metric for multi-label classification of
+        how many relevant items are selected.
+        """
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+        recall = true_positives / (possible_positives + K.epsilon())
+        return recall
+
+    def precision(y_true, y_pred):
+        """Precision metric.
+
+        Only computes a batch-wise average of precision.
+
+        Computes the precision, a metric for multi-label classification of
+        how many selected items are relevant.
+        """
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + K.epsilon())
+        return precision
+
+    precision = precision(y_true, y_pred)
+    recall = recall(y_true, y_pred)
+    return 2 * ((precision * recall) / (precision + recall + K.epsilon()))
 
 
 class AnnMLPMulti:
@@ -56,16 +94,18 @@ class AnnMLPMulti:
         self.y_train = None
         self.y_test = None
         self.n_features = None
+        self.n_classes = 5
         self.label_map_int_2_string = {0: 'normal', 1: 'dos', 2: 'u2r', 3: 'r2l', 4: 'probe'}
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
 
+
         # K-fold validation
-        self.splits = 5
+        self.splits = 2
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 100
-        self.batch_size = 50
+        self.epochs = 3
+        self.batch_size = 100 #    # batch_size is not a divisor of the training set size
         self.verbose = 0
 
         # Scores
@@ -83,20 +123,23 @@ class AnnMLPMulti:
 
         with timer('\nTraining & validating model with kfold'):
             # Train model on K-1 and validate using remaining fold
-            index = 0
+            self.index = 0
             for train, val in self.kfold.split(self.X_train, self.y_train):
-                index += 1
-                model = self.get_model()
-                y_train_onehotencoded = pd.get_dummies(self.y_train[train])
-                y_val_onehotencoded = pd.get_dummies(self.y_train[val])
+                self.index += 1
+                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_cv{}_{}'.format(self.index, time))
+                self.model = self.get_model()
+                self.y_train_onehotencoded = pd.get_dummies(self.y_train.iloc[train])
+                self.y_val_onehotencoded = pd.get_dummies(self.y_train.iloc[val])
 
-                history = model.fit(self.X_train.iloc[train], y_train_onehotencoded,
-                                    validation_data=(self.X_train.iloc[val], y_val_onehotencoded),
-                                    epochs=self.epochs, batch_size=self.batch_size)
-                self.metric_loss.append(history.history['loss'])
-                self.metric_acc.append(history.history['acc'])
-                self.metric_val_loss.append(history.history['val_loss'])
-                self.metric_val_acc.append(history.history['val_acc'])
+                self.history = self.model.fit(self.X_train.iloc[train], self.y_train_onehotencoded,
+                                              validation_data=(self.X_train.iloc[val], self.y_val_onehotencoded),
+                                              epochs=self.epochs, batch_size=self.batch_size,
+                                              callbacks=[self.tensorboard])
+
+                self.metric_loss.append(self.history.history['loss'])
+                self.metric_acc.append(self.history.history['acc'])
+                self.metric_val_loss.append(self.history.history['val_loss'])
+                self.metric_val_acc.append(self.history.history['val_acc'])
 
             print('Training mean loss', np.mean(self.metric_loss))
             print('Training mean acc', np.mean(self.metric_acc))
@@ -104,71 +147,136 @@ class AnnMLPMulti:
             print('Validation mean acc', np.mean(self.metric_val_acc))
 
         with timer('\nTesting model on unseen test set'):
-            model = self.get_model()
-            y_test_onehotencoded = pd.get_dummies(self.y_test)
-            y_train_onehotencoded = pd.get_dummies(self.y_train)
+            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test_{}'.format(time))
+            self.model = self.get_model()
+            self.y_test_onehotencoded = pd.get_dummies(self.y_test)
+            self.y_train_onehotencoded = pd.get_dummies(self.y_train)
 
             # Train model on complete train set and validate with unseen test set
-            history = model.fit(self.X_train, y_train_onehotencoded, validation_data=(self.X_test, y_test_onehotencoded),
-                                epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
+            self.history = self.model.fit(self.X_train, self.y_train_onehotencoded,
+                                          validation_data=(self.X_test, self.y_test_onehotencoded),
+                                          epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
+                                          callbacks=[self.tensorboard])
 
             # Get single class prediction (rather than multi class probability summing to 1)
-            y_pred = model.predict_classes(self.X_test)
+            y_pred = self.model.predict_classes(self.X_test)
 
-            print('Test loss', np.mean(history.history['loss']))
-            print('Test acc', np.mean(history.history['acc']))
+            print('Test loss', np.mean(self.history.history['loss']))
+            print('Test acc', np.mean(self.history.history['acc']))
             print('Accuracy {}'.format(accuracy_score(self.y_test, y_pred)))
 
             # Remap to string class targets
-            y_pred = pd.Series(y_pred)
-            y_pred = self.series_map_ac_multi_to_label(y_pred)
+            self.y_pred = pd.Series(y_pred)
+            self.y_pred = self.series_map_ac_multi_to_label(self.y_pred)
             self.y_test = self.series_map_ac_multi_to_label(self.y_test)
 
             # To numpy arrays for cm
-            y_pred = y_pred.values
+            self.y_pred = self.y_pred.values
             self.y_test = self.y_test.values
-            title = '{} - {} - {} '.format('CM', self.__class__.__name__, 'Multi')
-            self.visualize.confusion_matrix(self.y_test, y_pred, title)
+            self.title = '{} - {} - {} '.format('CM', self.__class__.__name__, 'Multi')
+            self.visualize.confusion_matrix(self.y_test, self.y_pred, self.title)
 
-            epochs = range(1, len(history.history['loss']) + 1)
+            # print('total from cm ', tp + tn + fp + fn, ' Size of test', self.y_test.shape)
+            cm = confusion_matrix(self.y_test, self.y_pred)
+            self.get_tp_from_cm(cm)
+            self.get_tn_from_cm(cm)
+            self.get_fp_from_cm(cm)
+            self.get_fn_from_cm(cm)
 
-            plt.plot(epochs, np.mean(self.metric_loss, axis=0), 'bo', label='Training loss')
-            plt.plot(epochs, np.mean(self.metric_val_loss, axis=0), 'b', label='Validation loss')
-            plt.plot(epochs, history.history['loss'], 'b*', label='Test loss')
-            plt.title('Training, validation and test loss')
-            plt.xlabel('Epochs')
-            plt.ylabel('Loss')
+
+
+            epochs = range(1, len(self.history.history['loss']) + 1)
+
+            plt.clf()
+            fig, ax = plt.subplots(figsize=(15, 8))
+            plt.style.use('ggplot')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.tick_params(axis='both', which='major', labelsize=12)
+            ax.plot(epochs, np.mean(self.metric_loss, axis=0), 'g', label='Training loss')
+            ax.plot(epochs, np.mean(self.metric_val_loss, axis=0), 'b', label='Validation loss')
+            ax.plot(epochs, self.history.history['loss'], 'r', label='Test loss')
+            plt.title('Training, validation and test loss', fontsize=18)
+            plt.xlabel('Epochs', fontsize=14)
+            plt.ylabel('Loss', fontsize=14)
             plt.legend()
             plt.show()
 
             plt.clf()
-            plt.plot(epochs, np.mean(self.metric_acc, axis=0), 'bo', label='Training acc')
-            plt.plot(epochs, np.mean(self.metric_val_acc, axis=0), 'b', label='Validation acc')
-            plt.plot(epochs, history.history['acc'], 'b*', label='Test acc')
-            plt.title('Training, validation and test acc')
-            plt.xlabel('Epochs')
-            plt.ylabel('Acc')
+            fig, ax = plt.subplots(figsize=(15, 8))
+            plt.style.use('ggplot')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.tick_params(axis='both', which='major', labelsize=12)
+            ax.plot(epochs, np.mean(self.metric_acc, axis=0), 'g', label='Training accuracy')
+            ax.plot(epochs, np.mean(self.metric_val_acc, axis=0), 'b', label='Validation accuracy')
+            ax.plot(epochs, self.history.history['acc'], 'r', label='Test accuracy')
+            plt.title('Training, validation and test accuracy', fontsize=18)
+            plt.xlabel('Epochs', fontsize=14)
+            plt.ylabel('Accuracy', fontsize=14)
             plt.legend()
             plt.show()
 
         # self.log_file()
         print('Finished')
 
+    @staticmethod
+    def dr(y_true, y_pred):
+        y_pred_pos = K.round(K.clip(y_pred, 0, 1))
+        y_pred_neg = 1 - y_pred_pos
+        y_pos = K.round(K.clip(y_true, 0, 1))
+        tp = K.sum(y_pos * y_pred_pos)
+        fn = K.sum(y_pos * y_pred_neg)
+        return tp / (tp + fn + K.epsilon())
+
+    @staticmethod
+    def far(y_true, y_pred):
+        y_pred_pos = K.round(K.clip(y_pred, 0, 1))
+        y_pred_neg = 1 - y_pred_pos
+        y_pos = K.round(K.clip(y_true, 0, 1))
+        y_neg = 1 - y_pos
+        tn = K.sum(y_neg * y_pred_neg)
+        fp = K.sum(y_neg * y_pred_pos)
+        return fp / (tn + fp + K.epsilon())
+
     def get_model(self):
         model = models.Sequential()
         model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
         model.add(layers.Dense(self.n_features, activation='relu'))
         model.add(layers.Dense(5, activation='softmax'))
-        tensorboard = TensorBoard(log_dir='logs/{}'.format(time))
-
-        model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy', self.dr, self.far])
         return model
 
-    def fit(self, X_train, y_train):
-        y_train = pd.get_dummies(y_train)  # for multi neural networks
-        tensorboard = TensorBoard(log_dir='logs/tensorboard/{}'.format(time.strftime("%Y%m%d-%H%M%S")))
-        self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
-                               callbacks=[tensorboard])
+    # True positives are the diagonal elements
+    def get_tp_from_cm(self, cm):
+        tp = np.diag(cm)
+        print('tp', np.sum(np.diag(cm)))
+        return np.sum(tp)
+
+    def get_tn_from_cm(self, cm):
+        tn = []
+        for i in range(self.n_classes):
+            temp = np.delete(cm, i, 0)  # delete ith row
+            temp = np.delete(temp, i, 1)  # delete ith column
+            tn.append(sum(sum(temp)))
+        print('tn ', np.sum(tn))
+        return np.sum(tn)
+
+    # Sum of columns minus diagonal
+    def get_fp_from_cm(self, cm):
+        fp = []
+        for i in range(self.n_classes):
+            fp.append(sum(cm[:, i]) - cm[i, i])
+        print('fp ', np.sum(fp))
+        return np.sum(fp)
+
+    # Sum of rows minus diagonal
+    def get_fn_from_cm(self, cm):
+        fn = []
+        for i in range(self.n_classes):
+            fn.append(sum(cm[i, :]) - cm[i, i])
+        print('fn', np.sum(fn))
+        return np.sum(fn)
+
+
 
     def log_file(self):
         if self.gettrace is None:
@@ -191,7 +299,7 @@ class AnnMLPMulti:
     def set_y(self):
         self.y = self.X['attack_category']
         self.y = self.y.map(self.label_map_string_2_int)
-        #self.y = self.y.values.ravel()
+
 
     def remove_target_from_X(self):
         self.X.drop('attack_category', axis=1, inplace=True)
@@ -199,14 +307,6 @@ class AnnMLPMulti:
     def train_test_split(self):
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.30,
                                                                                 random_state=self.random_state)
-
-    def df_map_ac_label_to_multi(self):
-        conditions = [
-           (self.y['attack_category'] == 'normal'),
-           (self.y['attack_category'] == 'dos'), (self.y['attack_category'] == 'u2r'),
-           (self.y['attack_category'] == 'r2l'),  (self.y['attack_category'] == 'probe')
-        ]
-        self.y['attack_category'] = np.select(conditions, ['0', '1', '2', '3', '4'])  # string for get_dummies encoding
 
     def series_map_ac_multi_to_label(self, s):
         return s.map(self.label_map_int_2_string)
