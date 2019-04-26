@@ -211,8 +211,8 @@ class Modelling:
 
             with timer('\nTraining and scoring {} - {} target'.format(m.__class__.__name__, ctype)):
                 m.base['model'] = m.get_model()
-                self.train_test_split()
-                m.score(self.X_train, self.y_train, ctype)
+                #self.train_test_split()
+                m.score(self.X, self.y, ctype)
 
             m.y_test[ctype] = pd.Series(m.y_test[ctype])
             m.y_pred[ctype] = pd.Series(m.y_pred[ctype])

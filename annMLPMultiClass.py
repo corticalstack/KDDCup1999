@@ -20,6 +20,7 @@ from dataset import KDDCup1999
 from visualize import Visualize
 import itertools
 from tensorflow.python.keras.callbacks import TensorBoard
+import matplotlib.pyplot as plt
 
 
 @contextmanager
@@ -55,15 +56,16 @@ class AnnMLPMulti:
         self.y_train = None
         self.y_test = None
         self.n_features = None
-        self.label_multi = {0: 'normal', 1: 'dos', 2: 'u2r', 3: 'r2l', 4: 'probe'}
+        self.label_map_int_2_string = {0: 'normal', 1: 'dos', 2: 'u2r', 3: 'r2l', 4: 'probe'}
+        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
 
         # K-fold validation
-        self.splits = 2
+        self.splits = 5
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 10
-        self.batch_size = 100
+        self.epochs = 100
+        self.batch_size = 50
         self.verbose = 0
 
         # Scores
@@ -79,10 +81,6 @@ class AnnMLPMulti:
             self.n_features = self.X.shape[1]
             self.train_test_split()
 
-
-
-            agg_ypred = []
-            agg_ytest = []
         with timer('\nTraining & validating model with kfold'):
             # Train model on K-1 and validate using remaining fold
             index = 0
@@ -113,33 +111,45 @@ class AnnMLPMulti:
             # Train model on complete train set and validate with unseen test set
             history = model.fit(self.X_train, y_train_onehotencoded, validation_data=(self.X_test, y_test_onehotencoded),
                                 epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
+
+            # Get single class prediction (rather than multi class probability summing to 1)
+            y_pred = model.predict_classes(self.X_test)
+
             print('Test loss', np.mean(history.history['loss']))
             print('Test acc', np.mean(history.history['acc']))
+            print('Accuracy {}'.format(accuracy_score(self.y_test, y_pred)))
 
-                #y_pred = self.predict(X.loc[test])
-                #agg_ypred.append(y_pred)
-                #agg_ytest.append(y[test])
+            # Remap to string class targets
+            y_pred = pd.Series(y_pred)
+            y_pred = self.series_map_ac_multi_to_label(y_pred)
+            self.y_test = self.series_map_ac_multi_to_label(self.y_test)
 
-        #self.y_pred[ctype] = [item for sublist in agg_ypred for item in sublist]
-        #self.y_test[ctype] = [item for sublist in agg_ytest for item in sublist]
+            # To numpy arrays for cm
+            y_pred = y_pred.values
+            self.y_test = self.y_test.values
+            title = '{} - {} - {} '.format('CM', self.__class__.__name__, 'Multi')
+            self.visualize.confusion_matrix(self.y_test, y_pred, title)
 
-        #m.score(self.X_train, self.y_train, ctype)
+            epochs = range(1, len(history.history['loss']) + 1)
 
-        #m.y_test[ctype] = pd.Series(m.y_test[ctype])
-        #m.y_pred[ctype] = pd.Series(m.y_pred[ctype])
-        #m.y_test[ctype] = m.y_test[ctype].astype(int)
-        #m.y_pred[ctype] = m.y_pred[ctype].astype(int)
+            plt.plot(epochs, np.mean(self.metric_loss, axis=0), 'bo', label='Training loss')
+            plt.plot(epochs, np.mean(self.metric_val_loss, axis=0), 'b', label='Validation loss')
+            plt.plot(epochs, history.history['loss'], 'b*', label='Test loss')
+            plt.title('Training, validation and test loss')
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            plt.legend()
+            plt.show()
 
-        #if ctype == 'Binary':
-        #    m.y_test[ctype] = self.series_map_ac_binary_to_label(m.y_test[ctype])
-        #    m.y_pred[ctype] = self.series_map_ac_binary_to_label(m.y_pred[ctype])
-        #else:
-        #    m.y_test[ctype] = self.series_map_ac_multi_to_label(m.y_test[ctype])
-        #    m.y_pred[ctype] = self.series_map_ac_multi_to_label(m.y_pred[ctype])
-
-        #title = '{} - {} - {} '.format('CM', m.__class__.__name__, ctype)
-        #self.visualize.confusion_matrix(m.y_test[ctype], m.y_pred[ctype], title)
-        #self.scores(m.y_test[ctype], m.y_pred[ctype])
+            plt.clf()
+            plt.plot(epochs, np.mean(self.metric_acc, axis=0), 'bo', label='Training acc')
+            plt.plot(epochs, np.mean(self.metric_val_acc, axis=0), 'b', label='Validation acc')
+            plt.plot(epochs, history.history['acc'], 'b*', label='Test acc')
+            plt.title('Training, validation and test acc')
+            plt.xlabel('Epochs')
+            plt.ylabel('Acc')
+            plt.legend()
+            plt.show()
 
         # self.log_file()
         print('Finished')
@@ -159,29 +169,6 @@ class AnnMLPMulti:
         tensorboard = TensorBoard(log_dir='logs/tensorboard/{}'.format(time.strftime("%Y%m%d-%H%M%S")))
         self.base['model'].fit(X_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                callbacks=[tensorboard])
-
-    def predict(self, X_test):
-        y_pred = self.base['model'].predict_classes(X_test)
-        return y_pred.ravel()
-
-    def fit(self, X_train, y_train):
-        self.base['model'].fit(X_train, y_train)
-
-    def predict(self, X_test):
-        return self.base['model'].predict(X_test)
-
-    def score(self, X, y, ctype):
-        agg_ypred = []
-        agg_ytest = []
-        for train, test in self.kfold.split(X, y):
-            self.fit(X.loc[train], y[train])
-            y_pred = self.predict(X.loc[test])
-            agg_ypred.append(y_pred)
-            agg_ytest.append(y[test])
-
-        self.y_pred[ctype] = [item for sublist in agg_ypred for item in sublist]
-        self.y_test[ctype] = [item for sublist in agg_ytest for item in sublist]
-
 
     def log_file(self):
         if self.gettrace is None:
@@ -203,7 +190,8 @@ class AnnMLPMulti:
 
     def set_y(self):
         self.y = self.X['attack_category']
-        self.y = self.y.values.ravel()
+        self.y = self.y.map(self.label_map_string_2_int)
+        #self.y = self.y.values.ravel()
 
     def remove_target_from_X(self):
         self.X.drop('attack_category', axis=1, inplace=True)
@@ -221,11 +209,7 @@ class AnnMLPMulti:
         self.y['attack_category'] = np.select(conditions, ['0', '1', '2', '3', '4'])  # string for get_dummies encoding
 
     def series_map_ac_multi_to_label(self, s):
-        return s.map(self.label_multi)
-
-    def scores(self, y_test, y_pred):
-        print('Accuracy {}'.format(accuracy_score(y_test, y_pred)))
-        print('F1 {}'.format(classification_report(y_test, y_pred, digits=10)))
+        return s.map(self.label_map_int_2_string)
 
 
 annmlpmulti = AnnMLPMulti()
