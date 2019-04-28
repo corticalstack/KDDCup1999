@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import time
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import QuantileTransformer
+from sklearn.preprocessing import QuantileTransformer, StandardScaler
 from imblearn.over_sampling import SMOTE
 from filehandler import Filehandler
 from dataset import KDDCup1999
@@ -37,7 +37,9 @@ class Tensor2d:
                      'root_shell', 'su_attempted', 'num_root', 'num_file_creations', 'num_shells', 'num_access_files',
                      'is_guest_login']
 
-        self.qt = QuantileTransformer(output_distribution='normal')
+        #self.qt = QuantileTransformer(output_distribution='normal')
+        self.sc = StandardScaler()
+
         self.sampler = SMOTE(random_state=0)
 
     def set_X(self, df):
@@ -54,15 +56,20 @@ class Tensor2d:
 
     def scale(self):
         cols = self.X.columns
-        self.X = self.qt.fit_transform(self.X)
+        self.X = self.sc.fit_transform(self.X)
         if isinstance(self.X, np.ndarray):
             self.X = pd.DataFrame(self.X, columns=cols)
 
     def pca_transform(self):
-        pca = PCA(n_components=3, random_state=self.random_state)
+        n_components = 25
+        cols = []
+        for i in range(n_components):
+            cols.append('PCAF' + str(i))
+
+        pca = PCA(n_components=n_components, random_state=self.random_state)
         self.X = pca.fit_transform(self.X)
         if isinstance(self.X, np.ndarray):
-            self.X = pd.DataFrame(self.X, columns=['PCAF1', 'PCAF2', 'PCAF3'])
+            self.X = pd.DataFrame(self.X, columns=[cols])
 
 
 class Tensor2d_type_1(Tensor2d):

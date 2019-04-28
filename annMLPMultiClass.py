@@ -35,6 +35,15 @@ class AnnMLPMulti:
     def __init__(self):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
+        sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+
+        with tf.device('/gpu:0'):
+            a = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[2, 3], name='a')
+            b = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[3, 2], name='b')
+            c = tf.matmul(a, b)
+
+        with tf.Session() as sess:
+            print(sess.run(c))
 
         # self.logfile = None
         # self.gettrace = getattr(sys, 'gettrace', None)
@@ -62,11 +71,11 @@ class AnnMLPMulti:
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
 
         # K-fold validation
-        self.splits = 5
+        self.splits = 3
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 20
+        self.epochs = 10
         self.verbose = 0
 
         # Scores
@@ -128,6 +137,7 @@ class AnnMLPMulti:
             self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test_{}'.format(time))
             tf.reset_default_graph()  # Reset graph for tensorboard display
 
+            K.clear_session()
             self.model = self.get_model()
             self.y_test_onehotencoded = pd.get_dummies(self.y_test)
             self.y_train_onehotencoded = pd.get_dummies(self.y_train)
@@ -244,9 +254,9 @@ class AnnMLPMulti:
     def get_model(self):
         model = models.Sequential()
         model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
-        model.add(layers.Dropout(0.5))
+        model.add(layers.Dropout(0.2))
         model.add(layers.Dense(self.n_features, activation='relu'))
-        model.add(layers.Dropout(0.5))
+        model.add(layers.Dropout(0.2))
         model.add(layers.Dense(5, activation='softmax'))
         model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy', self.dr, self.far])
         return model
@@ -268,6 +278,8 @@ class AnnMLPMulti:
 
     def load_data(self):
         self.X = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_Tensor2d_type_1')
+        print('\tRow count:\t', '{}'.format(self.X.shape[0]))
+        print('\tColumn count:\t', '{}'.format(self.X.shape[1]))
 
     def set_y(self):
         self.y = self.X['attack_category']
