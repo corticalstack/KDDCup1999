@@ -1,9 +1,8 @@
 """
 ===========================================================================
-Sampling techniques using KDD Cup 1999 IDS dataset
+Multi Layer Perceptron - Binary
 ===========================================================================
-The following examples demonstrate various sampling techniques for a dataset
-in which classes are extremely imbalanced with heavily skewed features
+Multi Layer Perceptron - Binary
 """
 import os
 import sys
@@ -24,6 +23,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 
+
 @contextmanager
 def timer(title):
     t0 = time.time()
@@ -31,19 +31,11 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class AnnMLPMulti:
+class AnnMLPBinary:
     def __init__(self):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
-
-        with tf.device('/gpu:0'):
-            a = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[2, 3], name='a')
-            b = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[3, 2], name='b')
-            c = tf.matmul(a, b)
-
-        with tf.Session() as sess:
-            print(sess.run(c))
 
         # self.logfile = None
         # self.gettrace = getattr(sys, 'gettrace', None)
@@ -67,16 +59,32 @@ class AnnMLPMulti:
         self.y_train = None
         self.y_test = None
         self.n_features = None
-        self.label_map_int_2_string = {0: 'normal', 1: 'dos', 2: 'u2r', 3: 'r2l', 4: 'probe'}
-        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
+        self.label_map_int_2_string = {0: 'good', 1: 'bad', '0': 'good', '1': 'bad'}
+        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 1, 'r2l': 1, 'probe': 1}
 
         # K-fold validation
-        self.splits = 2
+        self.splits = 10
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 2
+        self.epochs = 20
         self.verbose = 0
+
+        # Network parameter search space
+        # then we can go ahead and set the parameter space
+        self.p = {'lr': (0.5, 5, 10),
+             'first_neuron': [4, 8, 16, 32, 64],
+             'hidden_layers': [0, 1, 2],
+             'batch_size': (2, 30, 10),
+             'epochs': [150],
+             'dropout': (0, 0.5, 5),
+             'weight_regulizer': [None],
+             'emb_output_dims': [None],
+             'shape': ['brick', 'long_funnel'],
+             'optimizer': [Adam, Nadam, RMSprop],
+             'losses': [logcosh, binary_crossentropy],
+             'activation': [relu, elu],
+             'last_activation': [sigmoid]}
 
         # Scores
         self.metric_loss = []
@@ -107,11 +115,9 @@ class AnnMLPMulti:
                 self.index += 1
                 self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_cv{}_{}'.format(self.index, time))
                 self.model = self.get_model()
-                self.y_train_onehotencoded = pd.get_dummies(self.y_train.iloc[train])
-                self.y_val_onehotencoded = pd.get_dummies(self.y_train.iloc[val])
 
-                self.history = self.model.fit(self.X_train.iloc[train], self.y_train_onehotencoded,
-                                              validation_data=(self.X_train.iloc[val], self.y_val_onehotencoded),
+                self.history = self.model.fit(self.X_train.iloc[train], self.y_train.iloc[train],
+                                              validation_data=(self.X_train.iloc[val], self.y_train.iloc[val]),
                                               epochs=self.epochs, batch_size=self.batch_size,
                                               callbacks=[self.tensorboard])
 
@@ -139,12 +145,10 @@ class AnnMLPMulti:
 
             K.clear_session()
             self.model = self.get_model()
-            self.y_test_onehotencoded = pd.get_dummies(self.y_test)
-            self.y_train_onehotencoded = pd.get_dummies(self.y_train)
 
             # Train model on complete train set and validate with unseen test set
-            self.history = self.model.fit(self.X_train, self.y_train_onehotencoded,
-                                          validation_data=(self.X_test, self.y_test_onehotencoded),
+            self.history = self.model.fit(self.X_train, self.y_train,
+                                          validation_data=(self.X_test, self.y_test),
                                           epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                           callbacks=[self.tensorboard])
 
@@ -157,13 +161,10 @@ class AnnMLPMulti:
             print('Test far', np.mean(self.history.history['far']))
 
             # Remap to string class targets
-            self.y_pred = pd.Series(y_pred)
-            self.y_pred = self.map_target_to_label(self.y_pred)
+            self.y_pred = self.map_target_to_label(y_pred)
+            self.y_pred = self.y_pred.ravel()
             self.y_test = self.map_target_to_label(self.y_test)
 
-            # To numpy arrays for cm
-            self.y_pred = self.y_pred.values
-            self.y_test = self.y_test.values
             self.visualize.confusion_matrix(self.y_test, self.y_pred, self.__class__.__name__)
 
             epochs = range(1, len(self.history.history['loss']) + 1)
@@ -263,8 +264,8 @@ class AnnMLPMulti:
         model.add(layers.Dropout(0.2))
         model.add(layers.Dense(self.n_features, activation='relu'))
         model.add(layers.Dropout(0.2))
-        model.add(layers.Dense(5, activation='softmax'))
-        model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy', self.dr, self.far])
+        model.add(layers.Dense(1, activation='sigmoid'))
+        model.compile(optimizer='sgd', loss='binary_crossentropy', metrics=['accuracy', self.dr, self.far])
         return model
 
     def log_file(self):
@@ -299,11 +300,11 @@ class AnnMLPMulti:
                                                                                 random_state=self.random_state)
 
     def map_target_to_label(self, t):
-        return t.map(self.label_map_int_2_string)
+        return np.vectorize(self.label_map_int_2_string.get)(t)
 
     def fname(self, title):
         return '{}/{}.png'.format(self.folder, title)
 
 
-annmlpmulti = AnnMLPMulti()
+annmlpbinary = AnnMLPBinary()
 

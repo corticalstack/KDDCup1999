@@ -31,7 +31,7 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class AnnMLPMulti:
+class AnnLSTMMulti:
     def __init__(self):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
@@ -259,10 +259,8 @@ class AnnMLPMulti:
 
     def get_model(self):
         model = models.Sequential()
-        model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
-        model.add(layers.Dropout(0.2))
-        model.add(layers.Dense(self.n_features, activation='relu'))
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Embedding(self.n_features, 32))
+        model.add(layers.LSTM(32))
         model.add(layers.Dense(5, activation='softmax'))
         model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy', self.dr, self.far])
         return model
@@ -305,5 +303,5 @@ class AnnMLPMulti:
         return '{}/{}.png'.format(self.folder, title)
 
 
-annmlpmulti = AnnMLPMulti()
+annmlpmulti = AnnLSTMMulti()
 

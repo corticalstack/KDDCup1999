@@ -31,7 +31,7 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class AnnMLPMulti:
+class Ann1DCMulti:
     def __init__(self):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
@@ -71,11 +71,11 @@ class AnnMLPMulti:
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
 
         # K-fold validation
-        self.splits = 2
+        self.splits = 5
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 2
+        self.epochs = 20
         self.verbose = 0
 
         # Scores
@@ -259,11 +259,13 @@ class AnnMLPMulti:
 
     def get_model(self):
         model = models.Sequential()
-        model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
-        model.add(layers.Dropout(0.2))
-        model.add(layers.Dense(self.n_features, activation='relu'))
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Embedding(self.n_features, self.n_features, input_length=self.n_features))
+        model.add(layers.Conv1D(32, 7, activation='relu'))
+        model.add(layers.MaxPool1D(5))
+        model.add(layers.Conv1D(32, 7, activation='relu'))
+        model.add(layers.GlobalMaxPooling1D())
         model.add(layers.Dense(5, activation='softmax'))
+        model.summary()
         model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy', self.dr, self.far])
         return model
 
@@ -305,5 +307,5 @@ class AnnMLPMulti:
         return '{}/{}.png'.format(self.folder, title)
 
 
-annmlpmulti = AnnMLPMulti()
+ann1dcmulti = Ann1DCMulti()
 

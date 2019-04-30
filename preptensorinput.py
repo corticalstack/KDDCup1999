@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import time
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import QuantileTransformer, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from imblearn.over_sampling import SMOTE
 from filehandler import Filehandler
 from dataset import KDDCup1999
@@ -37,8 +37,7 @@ class Tensor2d:
                      'root_shell', 'su_attempted', 'num_root', 'num_file_creations', 'num_shells', 'num_access_files',
                      'is_guest_login']
 
-        #self.qt = QuantileTransformer(output_distribution='normal')
-        self.sc = StandardScaler()
+        self.sc = MinMaxScaler(feature_range=(0, 1))
 
         self.sampler = SMOTE(random_state=0)
 
