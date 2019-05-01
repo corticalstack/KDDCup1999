@@ -5,24 +5,20 @@ Multi Layer Perceptron - Binary
 Multi Layer Perceptron - Binary
 """
 import os
-import sys
 from contextlib import contextmanager
 import time
-import pandas as pd
-import numpy as np
-from sklearn.metrics import *
-from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import talos as ta
+from talos.model.normalizers import lr_normalizer
 import tensorflow as tf
-from tensorflow.python.keras.callbacks import TensorBoard
-from keras import models, layers
-from keras import optimizers
 import keras.backend as K
+from keras import models, layers
+from keras.optimizers import RMSprop, SGD
+from keras.activations import relu, sigmoid
+from keras.losses import binary_crossentropy
 from filehandler import Filehandler
 from dataset import KDDCup1999
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-import talos as ta
-
 
 
 @contextmanager
@@ -32,25 +28,18 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class AnnMLPBinary:
+class AnnMLPBinaryOptimize:
     def __init__(self):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
-
-        # self.logfile = None
-        # self.gettrace = getattr(sys, 'gettrace', None)
-        # self.original_stdout = sys.stdout
-        # self.timestr = time.strftime("%Y%m%d-%H%M%S")
-        # self.log_file()
 
         print(__doc__)
 
         self.random_state = 20
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
-        self.visualize = Visualize()
-        self.folder = 'viz'
+        self.folder = 'tuning'
 
         # Datasets
         self.X = None
@@ -60,65 +49,92 @@ class AnnMLPBinary:
         self.y_train = None
         self.y_test = None
         self.n_features = None
-        self.label_map_int_2_string = {0: 'good', 1: 'bad', '0': 'good', '1': 'bad'}
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 1, 'r2l': 1, 'probe': 1}
-
-        # K-fold validation
-        self.splits = 10
-        self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
-
-        # Network parameters
-        self.epochs = 20
-        self.verbose = 0
-
-        # Network parameter search space
-        # then we can go ahead and set the parameter space
-        self.p = {'lr': (0.5, 5, 10),
-             'first_neuron': [4, 8, 16, 32, 64],
-             'hidden_layers': [0, 1, 2],
-             'batch_size': (2, 30, 10),
-             'epochs': [150],
-             'dropout': (0, 0.5, 5),
-             'weight_regulizer': [None],
-             'emb_output_dims': [None],
-             'shape': ['brick', 'long_funnel'],
-             'optimizer': [Adam, Nadam, RMSprop],
-             'losses': [logcosh, binary_crossentropy],
-             'activation': [relu, elu],
-             'last_activation': [sigmoid]}
-
-        # Scores
-        self.metric_loss = []
-        self.metric_acc = []
-        self.metric_dr = []
-        self.metric_far = []
-
-        self.metric_val_loss = []
-        self.metric_val_acc = []
-        self.metric_val_dr = []
-        self.metric_val_far = []
 
         with timer('\nPreparing dataset'):
             self.load_data()
             self.set_y()
             self.remove_target_from_X()
-            self.n_features = self.X.shape[1]
+            self.n_features_all = self.X.shape[1]
+            self.n_features_50pct = int(self.n_features_all * 0.5)
+            self.n_features_80pct = int(self.n_features_all * 0.8)
             self.train_test_split()
+            self.X = self.X.values
+            self.y = self.y.values
 
-        with timer('\nTraining & validating model with kfold'):
-            # Train model on K-1 and validate using remaining fold
-            self.index = 0
-            self.batch_size = False
+        with timer('\nSearching parameter space'):
+            # self.p = {'lr': (0.5, 5, 10),
+            #      'first_neuron': [self.n_features_70pct, self.n_features_all],
+            #      'hidden_layers': [0, 1, 2],
+            #      'hidden_neuron': [self.n_features_70pct, self.n_features_all],
+            #      'batch_size': [100, 200],
+            #      'epochs': [30],
+            #      'dropout': (0, 0.2, 0.5),
+            #      'weight_regulizer': [None],
+            #      'emb_output_dims': [None],
+            #      'shape': ['brick', 'long_funnel'],
+            #      'optimizer': [Adam, RMSprop],
+            #      'losses': [binary_crossentropy],
+            #      'activation': [relu],
+            #      'last_activation': [sigmoid]}
 
-            t = ta.Scan(x=self.X_train,
-                        y=self.y_train,
+            self.ptest = {'lr': [0.001, 0.01],
+                       'hidden_layers': [1],
+                       'hidden_neuron': [self.n_features_all],
+                       'batch_size': [100],
+                       'epochs': [5],
+                       'dropout': [0.2],
+                       'optimizer': [SGD],
+                       'activation': [relu],
+                       'last_activation': [sigmoid]}
+
+            self.p1 = {'lr': (0.5, 5, 10),
+                       'first_neuron': [self.n_features_50pct, self.n_features_80pct, self.n_features_all],
+                       'hidden_layers': [1, 2, 3],
+                       'hidden_neuron': [self.n_features_50pct, self.n_features_80pct, self.n_features_all],
+                       'batch_size': [100, 500, 1000],
+                       'epochs': [20],
+                       'dropout': (0, 0.2, 5),
+                       'optimizer': [SGD, RMSprop],
+                       'activation': [relu],
+                       'last_activation': [sigmoid]}
+
+            dataset_name = self.folder + '/Hyperparameter tuning - ' + self.__class__.__name__
+            scan = ta.Scan(x=self.X,
+                        y=self.y,
                         model=self.get_model,
+                        params=self.p1,
                         grid_downsample=0.01,
-                        params=self.p,
-                        dataset_name='kddcup',
+                        dataset_name=dataset_name,
                         experiment_no='1')
 
-        # self.log_file()
+            with timer('\nEvaluating Scan'):
+                r = ta.Reporting(scan)
+
+                # get the number of rounds in the Scan
+                print('\nNumber of rounds in scan ', r.rounds())
+
+                # get highest results
+                print('\nHighest validation accuracy', r.high('val_dr'))
+                print('\nHighest validation detection rate', r.high('val_dr'))
+                print('\nHighest validation false alarm rate', r.high('val_far'))
+
+                # get the highest result for any metric
+                print(r.high('val_dr'))
+
+                # get the round with the best result
+                print('Best round', r.rounds2high())
+
+                # get the best paramaters
+                print(r.best_params())
+
+                r.plot_corr()
+                plt.show()
+
+                # a four dimensional bar grid
+                r.plot_bars('batch_size', 'val_dr', 'hidden_layers', 'lr')
+                plt.show()
+
         print('Finished')
 
     @staticmethod
@@ -143,32 +159,28 @@ class AnnMLPBinary:
     def get_model(self, x_train, y_train, x_val, y_val, params):
 
         model = models.Sequential()
-        model.add(layers.Dense(self.n_features, activation=params['activation'], input_shape=(self.n_features,)))
+
+        # Input layer with dropout
+        model.add(layers.Dense(params['first_neuron'], activation=params['activation'],
+                               input_shape=(self.n_features_all,)))
         model.add(layers.Dropout(params['dropout']))
-        model.add(layers.Dense(1, activation=params['last_activation'], kernel_initializer='normal'))
-        model.compile(optimizer=params['optimizer'](lr=lr_normalizer(params['lr'], params['optimizer'])), loss=params['losses'], metrics=['accuracy', self.dr, self.far])
 
-        history = self.model.fit(x_train, y_train,
-                                      validation_data=(x_val, y_val),
-                                      batch_size=params['batch_size'],
-                                      epochs=params['epochs'],
-                                      verbose = 0)
+        # Hidden layers with dropout
+        for i in range(params['hidden_layers']):
+            model.add(layers.Dense(params['hidden_neuron'], activation=params['activation']))
+            model.add(layers.Dropout(params['dropout']))
+
+        # Output layer
+        model.add(layers.Dense(1, activation=params['last_activation']))
+
+        # Build model
+        model.compile(params['optimizer'](lr=lr_normalizer(params['lr'], params['optimizer'])),
+                      loss='binary_crossentropy', metrics=['accuracy', self.dr, self.far])
+
+        history = model.fit(x_train, y_train, validation_data=(x_val, y_val), batch_size=params['batch_size'],
+                            epochs=params['epochs'], verbose=0)
+
         return history, model
-
-    def log_file(self):
-        if self.gettrace is None:
-            pass
-        elif self.gettrace():
-            pass
-        else:
-            if self.logfile:
-                sys.stdout = self.original_stdout
-                self.logfile.close()
-                self.logfile = False
-            else:
-                # Redirect stdout to file for logging if not in debug mode
-                self.logfile = open('logs/{}_{}_stdout.txt'.format(self.__class__.__name__, self.timestr), 'w')
-                sys.stdout = self.logfile
 
     def load_data(self):
         self.X = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_Tensor2d_type_1')
@@ -186,12 +198,6 @@ class AnnMLPBinary:
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.30,
                                                                                 random_state=self.random_state)
 
-    def map_target_to_label(self, t):
-        return np.vectorize(self.label_map_int_2_string.get)(t)
 
-    def fname(self, title):
-        return '{}/{}.png'.format(self.folder, title)
-
-
-annmlpbinary = AnnMLPBinary()
+annmlpbinary = AnnMLPBinaryOptimize()
 

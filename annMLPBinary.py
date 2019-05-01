@@ -14,7 +14,7 @@ from sklearn.metrics import *
 from sklearn.model_selection import train_test_split, StratifiedKFold
 import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
-from keras import models, layers
+from keras import models, layers, optimizers
 import keras.backend as K
 from filehandler import Filehandler
 from dataset import KDDCup1999
@@ -63,28 +63,13 @@ class AnnMLPBinary:
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 1, 'r2l': 1, 'probe': 1}
 
         # K-fold validation
-        self.splits = 10
+        self.splits = 5
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 20
+        self.epochs = 9
+        self.batch_size = 100
         self.verbose = 0
-
-        # Network parameter search space
-        # then we can go ahead and set the parameter space
-        self.p = {'lr': (0.5, 5, 10),
-             'first_neuron': [4, 8, 16, 32, 64],
-             'hidden_layers': [0, 1, 2],
-             'batch_size': (2, 30, 10),
-             'epochs': [150],
-             'dropout': (0, 0.5, 5),
-             'weight_regulizer': [None],
-             'emb_output_dims': [None],
-             'shape': ['brick', 'long_funnel'],
-             'optimizer': [Adam, Nadam, RMSprop],
-             'losses': [logcosh, binary_crossentropy],
-             'activation': [relu, elu],
-             'last_activation': [sigmoid]}
 
         # Scores
         self.metric_loss = []
@@ -107,11 +92,7 @@ class AnnMLPBinary:
         with timer('\nTraining & validating model with kfold'):
             # Train model on K-1 and validate using remaining fold
             self.index = 0
-            self.batch_size = False
             for train, val in self.kfold.split(self.X_train, self.y_train):
-                if not self.batch_size:
-                    self.batch_size = len(train) // 1000
-                    print('Batch size set at {}'.format(self.batch_size))
                 self.index += 1
                 self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_cv{}_{}'.format(self.index, time))
                 self.model = self.get_model()
@@ -262,10 +243,14 @@ class AnnMLPBinary:
         model = models.Sequential()
         model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
         model.add(layers.Dropout(0.2))
-        model.add(layers.Dense(self.n_features, activation='relu'))
+        model.add(layers.Dense(53, activation='relu'))
+        model.add(layers.Dropout(0.2))
+        model.add(layers.Dense(53, activation='relu'))
+        model.add(layers.Dropout(0.2))
+        model.add(layers.Dense(53, activation='relu'))
         model.add(layers.Dropout(0.2))
         model.add(layers.Dense(1, activation='sigmoid'))
-        model.compile(optimizer='sgd', loss='binary_crossentropy', metrics=['accuracy', self.dr, self.far])
+        model.compile(optimizer=optimizers.RMSprop(lr=0.001), loss='binary_crossentropy', metrics=['accuracy', self.dr, self.far])
         return model
 
     def log_file(self):
