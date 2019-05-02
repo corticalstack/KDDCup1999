@@ -15,7 +15,7 @@ from sklearn.metrics import *
 from sklearn.model_selection import train_test_split, StratifiedKFold
 import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
-from keras import models, layers
+from keras import models, layers, optimizers
 import keras.backend as K
 from filehandler import Filehandler
 from dataset import KDDCup1999
@@ -48,7 +48,7 @@ class AnnMLPMulti:
         # self.logfile = None
         # self.gettrace = getattr(sys, 'gettrace', None)
         # self.original_stdout = sys.stdout
-        # self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
         # self.log_file()
 
         print(__doc__)
@@ -71,11 +71,12 @@ class AnnMLPMulti:
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
 
         # K-fold validation
-        self.splits = 2
+        self.splits = 5
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 2
+        self.epochs = 20
+        self.batch_size = 100
         self.verbose = 0
 
         # Scores
@@ -99,13 +100,9 @@ class AnnMLPMulti:
         with timer('\nTraining & validating model with kfold'):
             # Train model on K-1 and validate using remaining fold
             self.index = 0
-            self.batch_size = False
             for train, val in self.kfold.split(self.X_train, self.y_train):
-                if not self.batch_size:
-                    self.batch_size = len(train) // 1000
-                    print('Batch size set at {}'.format(self.batch_size))
                 self.index += 1
-                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_cv{}_{}'.format(self.index, time))
+                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_cv')
                 self.model = self.get_model()
                 self.y_train_onehotencoded = pd.get_dummies(self.y_train.iloc[train])
                 self.y_val_onehotencoded = pd.get_dummies(self.y_train.iloc[val])
@@ -134,7 +131,7 @@ class AnnMLPMulti:
             print('Validation mean far', np.mean(self.metric_val_far))
 
         with timer('\nTesting model on unseen test set'):
-            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test_{}'.format(time))
+            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test')
             tf.reset_default_graph()  # Reset graph for tensorboard display
 
             K.clear_session()
@@ -259,12 +256,15 @@ class AnnMLPMulti:
 
     def get_model(self):
         model = models.Sequential()
-        model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
+        model.add(layers.Dense(84, activation='relu', input_shape=(self.n_features,)))
         model.add(layers.Dropout(0.2))
-        model.add(layers.Dense(self.n_features, activation='relu'))
+        model.add(layers.Dense(53, activation='relu'))
+        model.add(layers.Dropout(0.2))
+        model.add(layers.Dense(53, activation='relu'))
         model.add(layers.Dropout(0.2))
         model.add(layers.Dense(5, activation='softmax'))
-        model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy', self.dr, self.far])
+        model.compile(optimizer=optimizers.RMSprop(lr=0.001), loss='categorical_crossentropy',
+                      metrics=['accuracy', self.dr, self.far])
         return model
 
     def log_file(self):

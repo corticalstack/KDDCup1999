@@ -40,7 +40,7 @@ class AnnMLPBinary:
         # self.logfile = None
         # self.gettrace = getattr(sys, 'gettrace', None)
         # self.original_stdout = sys.stdout
-        # self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
         # self.log_file()
 
         print(__doc__)
@@ -94,7 +94,7 @@ class AnnMLPBinary:
             self.index = 0
             for train, val in self.kfold.split(self.X_train, self.y_train):
                 self.index += 1
-                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_cv{}_{}'.format(self.index, time))
+                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_{}_cv{}'.format(self.timestr, self.index))
                 self.model = self.get_model()
 
                 self.history = self.model.fit(self.X_train.iloc[train], self.y_train.iloc[train],
@@ -121,7 +121,7 @@ class AnnMLPBinary:
             print('Validation mean far', np.mean(self.metric_val_far))
 
         with timer('\nTesting model on unseen test set'):
-            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test_{}'.format(time))
+            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_{}_test_set'.format(self.timestr))
             tf.reset_default_graph()  # Reset graph for tensorboard display
 
             K.clear_session()
