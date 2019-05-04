@@ -1,9 +1,8 @@
 """
 ===========================================================================
-Sampling techniques using KDD Cup 1999 IDS dataset
+Multi Layer Perceptron - Multi-class
 ===========================================================================
-The following examples demonstrate various sampling techniques for a dataset
-in which classes are extremely imbalanced with heavily skewed features
+Multi Layer Perceptron - Multi-class
 """
 import os
 import sys
@@ -11,11 +10,11 @@ from contextlib import contextmanager
 import time
 import pandas as pd
 import numpy as np
-from sklearn.metrics import *
 from sklearn.model_selection import train_test_split, StratifiedKFold
 import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
 from keras import models, layers, optimizers
+from keras.utils import plot_model
 import keras.backend as K
 from filehandler import Filehandler
 from dataset import KDDCup1999
@@ -45,11 +44,11 @@ class AnnMLPMulti:
         with tf.Session() as sess:
             print(sess.run(c))
 
-        # self.logfile = None
-        # self.gettrace = getattr(sys, 'gettrace', None)
-        # self.original_stdout = sys.stdout
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
         self.timestr = time.strftime("%Y%m%d-%H%M%S")
-        # self.log_file()
+        self.log_file()
 
         print(__doc__)
 
@@ -75,7 +74,7 @@ class AnnMLPMulti:
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 20
+        self.epochs = 10
         self.batch_size = 100
         self.verbose = 0
 
@@ -109,7 +108,7 @@ class AnnMLPMulti:
 
                 self.history = self.model.fit(self.X_train.iloc[train], self.y_train_onehotencoded,
                                               validation_data=(self.X_train.iloc[val], self.y_val_onehotencoded),
-                                              epochs=self.epochs, batch_size=self.batch_size,
+                                              epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                               callbacks=[self.tensorboard])
 
                 self.metric_loss.append(self.history.history['loss'])
@@ -131,10 +130,11 @@ class AnnMLPMulti:
             print('Validation mean far', np.mean(self.metric_val_far))
 
         with timer('\nTesting model on unseen test set'):
-            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test')
             tf.reset_default_graph()  # Reset graph for tensorboard display
-
             K.clear_session()
+
+            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test')
+
             self.model = self.get_model()
             self.y_test_onehotencoded = pd.get_dummies(self.y_test)
             self.y_train_onehotencoded = pd.get_dummies(self.y_train)
@@ -144,6 +144,10 @@ class AnnMLPMulti:
                                           validation_data=(self.X_test, self.y_test_onehotencoded),
                                           epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                           callbacks=[self.tensorboard])
+
+        with timer('\nVisualising results'):
+            # Plot model
+            plot_model(self.model, to_file='viz/annMLPMultiClass - model plot.png')
 
             # Get single class prediction (rather than multi class probability summing to 1)
             y_pred = self.model.predict_classes(self.X_test)
@@ -232,7 +236,7 @@ class AnnMLPMulti:
             plt.savefig(fname=self.fname(self.title), dpi=300, format='png')
             plt.show()
 
-        # self.log_file()
+        self.log_file()
         print('Finished')
 
     @staticmethod

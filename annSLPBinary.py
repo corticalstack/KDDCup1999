@@ -15,6 +15,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
 from keras import models, layers
+from keras.utils import plot_model
 import keras.backend as K
 from filehandler import Filehandler
 from dataset import KDDCup1999
@@ -36,11 +37,11 @@ class AnnSLPBinary:
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
-        # self.logfile = None
-        # self.gettrace = getattr(sys, 'gettrace', None)
-        # self.original_stdout = sys.stdout
-        # self.timestr = time.strftime("%Y%m%d-%H%M%S")
-        # self.log_file()
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
 
         print(__doc__)
 
@@ -62,11 +63,12 @@ class AnnSLPBinary:
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 1, 'r2l': 1, 'probe': 1}
 
         # K-fold validation
-        self.splits = 10
+        self.splits = 5
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
         self.epochs = 20
+        self.batch_size = 100
         self.verbose = 0
 
         # Scores
@@ -88,20 +90,17 @@ class AnnSLPBinary:
             self.train_test_split()
 
         with timer('\nTraining & validating model with kfold'):
+            tf.reset_default_graph()  # Reset graph for tensorboard display
+            K.clear_session()
+
             # Train model on K-1 and validate using remaining fold
-            self.index = 0
-            self.batch_size = False
             for train, val in self.kfold.split(self.X_train, self.y_train):
-                if not self.batch_size:
-                    self.batch_size = len(train) // 1000
-                    print('Batch size set at {}'.format(self.batch_size))
-                self.index += 1
-                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_cv{}_{}'.format(self.index, time))
+                self.tensorboard = TensorBoard(log_dir='logs/tb/annslpbinary_cv')
                 self.model = self.get_model()
 
                 self.history = self.model.fit(self.X_train.iloc[train], self.y_train.iloc[train],
                                               validation_data=(self.X_train.iloc[val], self.y_train.iloc[val]),
-                                              epochs=self.epochs, batch_size=self.batch_size,
+                                              epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                               callbacks=[self.tensorboard])
 
                 self.metric_loss.append(self.history.history['loss'])
@@ -123,10 +122,10 @@ class AnnSLPBinary:
             print('Validation mean far', np.mean(self.metric_val_far))
 
         with timer('\nTesting model on unseen test set'):
-            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test_{}'.format(time))
             tf.reset_default_graph()  # Reset graph for tensorboard display
-
             K.clear_session()
+
+            self.tensorboard = TensorBoard(log_dir='logs/tb/annslpbinary_test')
             self.model = self.get_model()
 
             # Train model on complete train set and validate with unseen test set
@@ -134,6 +133,10 @@ class AnnSLPBinary:
                                           validation_data=(self.X_test, self.y_test),
                                           epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                           callbacks=[self.tensorboard])
+
+        with timer('\nVisualising results'):
+            # Plot model
+            plot_model(self.model, to_file='viz/annSLPBinary - model plot.png')
 
             # Get single class prediction (rather than multi class probability summing to 1)
             y_pred = self.model.predict_classes(self.X_test)
@@ -219,7 +222,7 @@ class AnnSLPBinary:
             plt.savefig(fname=self.fname(self.title), dpi=300, format='png')
             plt.show()
 
-        # self.log_file()
+        self.log_file()
         print('Finished')
 
     @staticmethod

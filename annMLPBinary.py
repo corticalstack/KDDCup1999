@@ -8,20 +8,18 @@ import os
 import sys
 from contextlib import contextmanager
 import time
-import pandas as pd
 import numpy as np
-from sklearn.metrics import *
 from sklearn.model_selection import train_test_split, StratifiedKFold
 import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
 from keras import models, layers, optimizers
+from keras.utils import plot_model
 import keras.backend as K
 from filehandler import Filehandler
 from dataset import KDDCup1999
 from visualize import Visualize
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
-
 
 
 @contextmanager
@@ -37,11 +35,11 @@ class AnnMLPBinary:
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
-        # self.logfile = None
-        # self.gettrace = getattr(sys, 'gettrace', None)
-        # self.original_stdout = sys.stdout
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
         self.timestr = time.strftime("%Y%m%d-%H%M%S")
-        # self.log_file()
+        self.log_file()
 
         print(__doc__)
 
@@ -67,7 +65,7 @@ class AnnMLPBinary:
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 9
+        self.epochs = 8
         self.batch_size = 100
         self.verbose = 0
 
@@ -90,16 +88,17 @@ class AnnMLPBinary:
             self.train_test_split()
 
         with timer('\nTraining & validating model with kfold'):
+            tf.reset_default_graph()  # Reset graph for tensorboard display
+            K.clear_session()
+
             # Train model on K-1 and validate using remaining fold
-            self.index = 0
             for train, val in self.kfold.split(self.X_train, self.y_train):
-                self.index += 1
-                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_{}_cv{}'.format(self.timestr, self.index))
+                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_cv')
                 self.model = self.get_model()
 
                 self.history = self.model.fit(self.X_train.iloc[train], self.y_train.iloc[train],
                                               validation_data=(self.X_train.iloc[val], self.y_train.iloc[val]),
-                                              epochs=self.epochs, batch_size=self.batch_size,
+                                              epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                               callbacks=[self.tensorboard])
 
                 self.metric_loss.append(self.history.history['loss'])
@@ -121,10 +120,10 @@ class AnnMLPBinary:
             print('Validation mean far', np.mean(self.metric_val_far))
 
         with timer('\nTesting model on unseen test set'):
-            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_{}_test_set'.format(self.timestr))
             tf.reset_default_graph()  # Reset graph for tensorboard display
-
             K.clear_session()
+
+            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_test')
             self.model = self.get_model()
 
             # Train model on complete train set and validate with unseen test set
@@ -132,6 +131,10 @@ class AnnMLPBinary:
                                           validation_data=(self.X_test, self.y_test),
                                           epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                           callbacks=[self.tensorboard])
+
+        with timer('\nVisualising results'):
+            # Plot model
+            plot_model(self.model, to_file='viz/annMLPBinary - model plot.png')
 
             # Get single class prediction (rather than multi class probability summing to 1)
             y_pred = self.model.predict_classes(self.X_test)
@@ -217,7 +220,7 @@ class AnnMLPBinary:
             plt.savefig(fname=self.fname(self.title), dpi=300, format='png')
             plt.show()
 
-        # self.log_file()
+        self.log_file()
         print('Finished')
 
     @staticmethod
