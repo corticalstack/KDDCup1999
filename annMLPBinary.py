@@ -33,7 +33,8 @@ class AnnMLPBinary:
     def __init__(self):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+        self.g = tf.Graph()
+        self.tf_sess = tf.Session(config=tf.ConfigProto(log_device_placement=True), graph=self.g)
 
         self.logfile = None
         self.gettrace = getattr(sys, 'gettrace', None)
@@ -65,7 +66,7 @@ class AnnMLPBinary:
         self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
 
         # Network parameters
-        self.epochs = 8
+        self.epochs = 20
         self.batch_size = 100
         self.verbose = 0
 
@@ -88,18 +89,18 @@ class AnnMLPBinary:
             self.train_test_split()
 
         with timer('\nTraining & validating model with kfold'):
-            tf.reset_default_graph()  # Reset graph for tensorboard display
+            self.g.as_default()  # Reset graph for tensorboard display
             K.clear_session()
 
             # Train model on K-1 and validate using remaining fold
             for train, val in self.kfold.split(self.X_train, self.y_train):
-                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_cv')
+                #self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_cv')
                 self.model = self.get_model()
 
                 self.history = self.model.fit(self.X_train.iloc[train], self.y_train.iloc[train],
                                               validation_data=(self.X_train.iloc[val], self.y_train.iloc[val]),
-                                              epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
-                                              callbacks=[self.tensorboard])
+                                              epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
+                                              #callbacks=[self.tensorboard])
 
                 self.metric_loss.append(self.history.history['loss'])
                 self.metric_acc.append(self.history.history['acc'])
@@ -120,7 +121,7 @@ class AnnMLPBinary:
             print('Validation mean far', np.mean(self.metric_val_far))
 
         with timer('\nTesting model on unseen test set'):
-            tf.reset_default_graph()  # Reset graph for tensorboard display
+            self.g.as_default()  # Reset graph for tensorboard display
             K.clear_session()
 
             self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_test')
@@ -244,16 +245,16 @@ class AnnMLPBinary:
 
     def get_model(self):
         model = models.Sequential()
-        model.add(layers.Dense(self.n_features, activation='relu', input_shape=(self.n_features,)))
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Dense(106, activation='relu', input_shape=(self.n_features,)))
+        model.add(layers.Dropout(0.08))
         model.add(layers.Dense(53, activation='relu'))
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Dropout(0.08))
         model.add(layers.Dense(53, activation='relu'))
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Dropout(0.08))
         model.add(layers.Dense(53, activation='relu'))
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Dropout(0.08))
         model.add(layers.Dense(1, activation='sigmoid'))
-        model.compile(optimizer=optimizers.RMSprop(lr=0.001), loss='binary_crossentropy', metrics=['accuracy', self.dr, self.far])
+        model.compile(optimizer=optimizers.RMSprop(lr=0.0023), loss='binary_crossentropy', metrics=['accuracy', self.dr, self.far])
         return model
 
     def log_file(self):
