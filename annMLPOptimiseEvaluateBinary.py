@@ -35,7 +35,7 @@ class AnnMLPOptimiseEvaluate:
 
         print(__doc__)
 
-        self.n_classes = 2
+        self.n_classes = 5
         self.random_state = 20
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
@@ -53,7 +53,7 @@ class AnnMLPOptimiseEvaluate:
         self.hyp = None
         self.lr = None
         self.label_map_int_2_string = {0: 'good', 1: 'bad', '0': 'good', '1': 'bad'}
-        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 1, 'r2l': 1, 'probe': 1}
+        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
         self.max_iters = 100
 
         with timer('\nPreparing dataset'):
@@ -79,6 +79,22 @@ class AnnMLPOptimiseEvaluate:
         with timer('\nVisualising optimisation search'):
             self.load_hyp()
             self.hyp['lr'] = round(self.hyp['lr'] / 1000, 3)
+
+            # Hyperparameter correlation with val DR
+            self.hyp_val_dr = self.hyp
+            self.hyp_val_dr.drop(['round_epochs', 'epochs', 'loss', 'dr', 'far', 'acc', 'val_loss', 'val_acc', 'val_far'], axis=1, inplace=True)
+            self.dr_corr = self.hyp_val_dr.corr()
+            plt.clf()
+            fig, ax = plt.subplots(figsize=(10, 10))
+            title = 'Validation DR Hyperparameter Correlation'
+            ax.set_title(title, size=16)
+            colormap = sns.diverging_palette(220, 10, as_cmap=True)
+            sns.heatmap(self.dr_corr, cmap=colormap, annot=True, fmt=".2f", cbar=False, vmin=-0.4, vmax=0.4)
+            plt.xticks(range(len(self.dr_corr.columns)), self.dr_corr.columns)
+            plt.yticks(range(len(self.dr_corr.columns)), self.dr_corr.columns)
+            plt.savefig(fname=self.fname(title), dpi=300, format='png')
+            plt.show()
+
             self.hyp['val_dr_change'] = round(self.hyp.val_dr - self.dr, 3)
             pd.set_option('display.max_columns', 100)
             print(self.hyp.sort_values(by='val_dr', ascending=False).head())
@@ -89,9 +105,9 @@ class AnnMLPOptimiseEvaluate:
             plt.clf()
             fig, ax = plt.subplots(figsize=(10, 6))
             ax = sns.boxplot(x=metric, y='val_dr_change', data=self.hyp.reset_index(), color=self.color)
-            title = 'Validation DR Change Over Baseline As Fn Of Loss Rate'
+            title = 'Validation DR Change Over Baseline As Fn Of Learning Rate'
             plt.title(title, fontsize=16)
-            plt.xlabel('Loss Rate', fontsize=12)
+            plt.xlabel('Learning Rate', fontsize=12)
             plt.ylabel('Validation DR Change', fontsize=12)
             plt.savefig(fname=self.fname(title), dpi=300, format='png')
             plt.show()
@@ -276,7 +292,7 @@ class AnnMLPOptimiseEvaluate:
         return np.vectorize(self.label_map_int_2_string.get)(t)
 
     def fname(self, title):
-        return '{}/{}.png'.format(self.folder, self.fprefix_binary + title)
+        return '{}/{}.png'.format(self.folder, self.fprefix_multi + title)
 
 
 annmlpoptimiseevaluate = AnnMLPOptimiseEvaluate()
