@@ -1,8 +1,8 @@
 """
 ===========================================================================
-Single Layer Perceptron
+Single Layer Perceptron - Binary
 ===========================================================================
-Single Layer Perceptron
+Single Layer Perceptron - Binary
 """
 import os
 import sys

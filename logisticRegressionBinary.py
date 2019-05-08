@@ -1,27 +1,19 @@
 """
 ===========================================================================
-Single Layer Perceptron
+Logistic Regression - Binary
 ===========================================================================
-Single Layer Perceptron
+Logistic Regression - Binary
 """
-import os
 import sys
 from contextlib import contextmanager
 import time
 import pandas as pd
 import numpy as np
 from sklearn.metrics import *
-from sklearn.model_selection import train_test_split, StratifiedKFold
-import tensorflow as tf
-from tensorflow.python.keras.callbacks import TensorBoard
-from keras import models, layers
-from keras.utils import plot_model
-import keras.backend as K
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 from filehandler import Filehandler
 from dataset import KDDCup1999
-from visualize import Visualize
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 
 
 @contextmanager
@@ -31,13 +23,8 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class AnnSLPBinary:
+class LogisticRegressionBinary:
     def __init__(self):
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
-        tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
-        self.g = tf.Graph()
-        self.tf_sess = tf.Session(config=tf.ConfigProto(log_device_placement=True), graph=self.g)
-
         self.logfile = None
         self.gettrace = getattr(sys, 'gettrace', None)
         self.original_stdout = sys.stdout
@@ -49,8 +36,7 @@ class AnnSLPBinary:
         self.random_state = 20
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
-        self.visualize = Visualize()
-        self.folder = 'viz'
+        self.n_classes = 2
 
         # Datasets
         self.X = None
@@ -59,198 +45,40 @@ class AnnSLPBinary:
         self.X_test = None
         self.y_train = None
         self.y_test = None
-        self.n_features = None
         self.label_map_int_2_string = {0: 'good', 1: 'bad', '0': 'good', '1': 'bad'}
         self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 1, 'r2l': 1, 'probe': 1}
-
-        # K-fold validation
-        self.splits = 5
-        self.kfold = StratifiedKFold(n_splits=self.splits, shuffle=True, random_state=self.random_state)
-
-        # Network parameters
-        self.epochs = 20
-        self.batch_size = 100
-        self.verbose = 0
-
-        # Scores
-        self.metric_loss = []
-        self.metric_acc = []
-        self.metric_dr = []
-        self.metric_far = []
-
-        self.metric_val_loss = []
-        self.metric_val_acc = []
-        self.metric_val_dr = []
-        self.metric_val_far = []
+        self.max_iters = 100
 
         with timer('\nPreparing dataset'):
             self.load_data()
             self.set_y()
             self.remove_target_from_X()
-            self.n_features = self.X.shape[1]
             self.train_test_split()
 
-        with timer('\nTraining & validating model with kfold'):
-            self.g.as_default()  # Reset graph for tensorboard display
-            K.clear_session()
-            self.index = 0
-            # Train model on K-1 and validate using remaining fold
-            for train, val in self.kfold.split(self.X_train, self.y_train):
-                self.index += 1
-                #self.tensorboard = TensorBoard(log_dir='logs/tb/annslpbinary_cv_{}'.format(str(self.index)))
-                self.model = self.get_model()
-
-                self.history = self.model.fit(self.X_train.iloc[train], self.y_train.iloc[train],
-                                              validation_data=(self.X_train.iloc[val], self.y_train.iloc[val]),
-                                              epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
-                                              #callbacks=[self.tensorboard])
-
-                self.metric_loss.append(self.history.history['loss'])
-                self.metric_acc.append(self.history.history['acc'])
-                self.metric_dr.append(self.history.history['dr'])
-                self.metric_far.append(self.history.history['far'])
-                self.metric_val_loss.append(self.history.history['val_loss'])
-                self.metric_val_acc.append(self.history.history['val_acc'])
-                self.metric_val_dr.append(self.history.history['val_dr'])
-                self.metric_val_far.append(self.history.history['val_far'])
-
-            print('\nTraining mean loss', np.mean(self.metric_loss))
-            print('Training mean acc', np.mean(self.metric_acc))
-            print('Training mean dr', np.mean(self.metric_dr))
-            print('Training mean far', np.mean(self.metric_far))
-            print('\nValidation mean loss', np.mean(self.metric_val_loss))
-            print('Validation mean acc', np.mean(self.metric_val_acc))
-            print('Validation mean dr', np.mean(self.metric_val_dr))
-            print('Validation mean far', np.mean(self.metric_val_far))
-
         with timer('\nTesting model on unseen test set'):
-            self.g.as_default()  # Reset graph for tensorboard display
-            K.clear_session()
+            lr = LogisticRegression(penalty='l2', solver='sag', max_iter=self.max_iters)
+            lr.fit(self.X_train, self.y_train)
+            self.y_pred = lr.predict(self.X_test)
+            cm = confusion_matrix(self.y_test, self.y_pred)
+            self.tp = cm[1, 1]
+            self.tn = cm[0, 0]
+            self.fp = cm[0, 1]
+            self.fn = cm[1, 0]
 
-            self.tensorboard = TensorBoard(log_dir='logs/tb/annslpbinary_test')
-            self.model = self.get_model()
+            print('True positive (TP)', self.tp)
+            print('True negative (TN)', self.tn)
+            print('False positive (FP)', self.fp)
+            print('false negative (FN)', self.fn)
 
-            # Train model on complete train set and validate with unseen test set
-            self.history = self.model.fit(self.X_train, self.y_train,
-                                          validation_data=(self.X_test, self.y_test),
-                                          epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
-                                          callbacks=[self.tensorboard])
-
-        with timer('\nVisualising results'):
-            # Plot model
-            plot_model(self.model, to_file='viz/annSLPBinary - model plot.png')
-
-            # Get single class prediction (rather than multi class probability summing to 1)
-            y_pred = self.model.predict_classes(self.X_test)
-
-            print('Test loss', np.mean(self.history.history['loss']))
-            print('Test acc', np.mean(self.history.history['acc']))
-            print('Test dr', np.mean(self.history.history['dr']))
-            print('Test far', np.mean(self.history.history['far']))
-
-            # Remap to string class targets
-            self.y_pred = self.map_target_to_label(y_pred)
-            self.y_pred = self.y_pred.ravel()
-            self.y_test = self.map_target_to_label(self.y_test)
-
-            self.visualize.confusion_matrix(self.y_test, self.y_pred, self.__class__.__name__)
-
-            epochs = range(1, len(self.history.history['loss']) + 1)
-
-            # Plot loss
-            fig, ax = plt.subplots(figsize=(15, 8))
-            plt.style.use('ggplot')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            ax.tick_params(axis='both', which='major', labelsize=12)
-            ax.plot(epochs, np.mean(self.metric_loss, axis=0), 'g', label='Training')
-            ax.plot(epochs, np.mean(self.metric_val_loss, axis=0), 'b', label='Validation')
-            ax.plot(epochs, self.history.history['loss'], 'r', label='Test')
-            self.title = '{} - {}'.format(self.__class__.__name__, 'Loss')
-            plt.title(self.title, fontsize=18)
-            plt.xlabel('Epochs', fontsize=14)
-            plt.ylabel('Loss', fontsize=14)
-            plt.legend(loc=1, prop={'size': 14})
-            plt.savefig(fname=self.fname(self.title), dpi=300, format='png')
-            plt.show()
-
-            # Plot accuracy
-            plt.clf()
-            fig, ax = plt.subplots(figsize=(15, 8))
-            plt.style.use('ggplot')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            ax.tick_params(axis='both', which='major', labelsize=12)
-            ax.plot(epochs, np.mean(self.metric_acc, axis=0), 'g', label='Training')
-            ax.plot(epochs, np.mean(self.metric_val_acc, axis=0), 'b', label='Validation')
-            ax.plot(epochs, self.history.history['acc'], 'r', label='Test')
-            self.title = '{} - {}'.format(self.__class__.__name__, 'Accuracy')
-            plt.title(self.title, fontsize=18)
-            plt.xlabel('Epochs', fontsize=14)
-            plt.ylabel('Accuracy', fontsize=14)
-            plt.legend(loc=4, prop={'size': 14})
-            plt.savefig(fname=self.fname(self.title), dpi=300, format='png')
-            plt.show()
-
-            # Plot detection rate
-            plt.clf()
-            fig, ax = plt.subplots(figsize=(15, 8))
-            plt.style.use('ggplot')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            ax.tick_params(axis='both', which='major', labelsize=12)
-            ax.plot(epochs, np.mean(self.metric_dr, axis=0), 'g', label='Training')
-            ax.plot(epochs, np.mean(self.metric_val_dr, axis=0), 'b', label='Validation')
-            ax.plot(epochs, self.history.history['dr'], 'r', label='Test')
-            self.title = '{} - {}'.format(self.__class__.__name__, 'Detection Rate')
-            plt.title(self.title, fontsize=18)
-            plt.xlabel('Epochs', fontsize=14)
-            plt.ylabel('Detection Rate', fontsize=14)
-            plt.legend(loc=4, prop={'size': 14})
-            plt.savefig(fname=self.fname(self.title), dpi=300, format='png')
-            plt.show()
-
-            # Plot false alarm rate
-            plt.clf()
-            fig, ax = plt.subplots(figsize=(15, 8))
-            plt.style.use('ggplot')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            ax.tick_params(axis='both', which='major', labelsize=12)
-            ax.plot(epochs, np.mean(self.metric_far, axis=0), 'g', label='Training')
-            ax.plot(epochs, np.mean(self.metric_val_far, axis=0), 'b', label='Validation')
-            ax.plot(epochs, self.history.history['far'], 'r', label='Test')
-            self.title = '{} - {}'.format(self.__class__.__name__, 'False Alarm Rate')
-            plt.title(self.title, fontsize=18)
-            plt.xlabel('Epochs', fontsize=14)
-            plt.ylabel('False Alarm Rate', fontsize=14)
-            plt.legend(loc=1, prop={'size': 14})
-            plt.savefig(fname=self.fname(self.title), dpi=300, format='png')
-            plt.show()
+            self.dr = self.tp / (self.tp + self.fp)
+            self.far = self.fp / (self.tn + self.fp)
+            self.acc = (self.tp + self.tn) / (self.tp + self.tn + self.fp + self.fn)
+            print('Detection rate: ', self.dr)
+            print('False alarm rate: ', self.far)
+            print('Accuracy: ', self.acc)
 
         self.log_file()
         print('Finished')
-
-    @staticmethod
-    def dr(y_true, y_pred):
-        y_pred_pos = K.round(K.clip(y_pred, 0, 1))
-        y_pred_neg = 1 - y_pred_pos
-        y_pos = K.round(K.clip(y_true, 0, 1))
-        tp = K.sum(y_pos * y_pred_pos)
-        fn = K.sum(y_pos * y_pred_neg)
-        return tp / (tp + fn + K.epsilon())
-
-    @staticmethod
-    def far(y_true, y_pred):
-        y_pred_pos = K.round(K.clip(y_pred, 0, 1))
-        y_pred_neg = 1 - y_pred_pos
-        y_pos = K.round(K.clip(y_true, 0, 1))
-        y_neg = 1 - y_pos
-        tn = K.sum(y_neg * y_pred_neg)
-        fp = K.sum(y_neg * y_pred_pos)
-        return fp / (tn + fp + K.epsilon())
-
-    def get_model(self):
-        model = models.Sequential()
-        model.add(layers.Dense(1, activation='sigmoid', input_shape=(self.n_features,)))
-        model.compile(optimizer='sgd', loss='binary_crossentropy', metrics=['accuracy', self.dr, self.far])
-        return model
 
     def log_file(self):
         if self.gettrace is None:
@@ -290,5 +118,5 @@ class AnnSLPBinary:
         return '{}/{}.png'.format(self.folder, title)
 
 
-annslpbinary = AnnSLPBinary()
+logisticregressionbinary = LogisticRegressionBinary()
 

@@ -1,8 +1,8 @@
 """
 ===========================================================================
-Multi Layer Perceptron - Binary
+Multi Layer Perceptron - Multiclass Optimize
 ===========================================================================
-Multi Layer Perceptron - Binary
+Multi Layer Perceptron - Multiclass Optimize
 """
 import os
 from contextlib import contextmanager
@@ -16,8 +16,7 @@ import tensorflow as tf
 import keras.backend as K
 from keras import models, layers
 from keras.optimizers import RMSprop, SGD
-from keras.activations import relu, sigmoid, softmax
-from keras.losses import binary_crossentropy
+from keras.activations import relu, softmax
 from filehandler import Filehandler
 from dataset import KDDCup1999
 

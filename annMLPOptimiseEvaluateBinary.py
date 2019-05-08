@@ -1,8 +1,8 @@
 """
-===========================================================================
-Logistic Regression and evaluation
-===========================================================================
-Logistic Regression
+=====================================================================================
+Logistic Regression and evaluation of Talos Hyperparameter Scan Binary Classification
+=====================================================================================
+Logistic Regression and evaluation of Talos Hyperparameter Scan Binary Classification
 """
 import sys
 from contextlib import contextmanager
@@ -25,23 +25,22 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class AnnMLPOptimiseEvaluate:
+class AnnMLPOptimiseEvaluateBinary:
     def __init__(self):
-        # self.logfile = None
-        # self.gettrace = getattr(sys, 'gettrace', None)
-        # self.original_stdout = sys.stdout
-        # self.timestr = time.strftime("%Y%m%d-%H%M%S")
-        # self.log_file()
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
 
         print(__doc__)
 
-        self.n_classes = 5
+        self.n_classes = 2
         self.random_state = 20
         self.filehandler = Filehandler()
         self.ds = KDDCup1999()
         self.folder = 'viz'
         self.fprefix_binary = 'Hyper - annMLPBinary - '
-        self.fprefix_multi = 'Hyper - annMLPMulti - '
 
         # Datasets
         self.X = None
@@ -52,8 +51,7 @@ class AnnMLPOptimiseEvaluate:
         self.y_test = None
         self.hyp = None
         self.lr = None
-        self.label_map_int_2_string = {0: 'good', 1: 'bad', '0': 'good', '1': 'bad'}
-        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
+        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 1, 'r2l': 1, 'probe': 1}
         self.max_iters = 100
 
         with timer('\nPreparing dataset'):
@@ -211,7 +209,7 @@ class AnnMLPOptimiseEvaluate:
             plt.savefig(fname=self.fname(title), dpi=300, format='png')
             plt.show()
 
-        #self.log_file()
+        self.log_file()
         print('Finished')
 
     def get_base_dr(self):
@@ -275,7 +273,7 @@ class AnnMLPOptimiseEvaluate:
         print('\tColumn count:\t', '{}'.format(self.X.shape[1]))
 
     def load_hyp(self):
-        self.hyp = pd.read_csv('tuning/Hyperparameter tuning - AnnMLPMultiOptimize_1.csv')
+        self.hyp = pd.read_csv('tuning/Hyperparameter tuning - AnnMLPBinaryOptimize_1.csv')
 
     def set_y(self):
         self.y = self.X['attack_category']
@@ -288,14 +286,11 @@ class AnnMLPOptimiseEvaluate:
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.30,
                                                                                 random_state=self.random_state)
 
-    def map_target_to_label(self, t):
-        return np.vectorize(self.label_map_int_2_string.get)(t)
-
     def fname(self, title):
-        return '{}/{}.png'.format(self.folder, self.fprefix_multi + title)
+        return '{}/{}.png'.format(self.folder, self.fprefix_binary + title)
 
 
-annmlpoptimiseevaluate = AnnMLPOptimiseEvaluate()
+evaluatebinary = AnnMLPOptimiseEvaluateBinary()
 
 
 

@@ -1,8 +1,8 @@
 """
 ===========================================================================
-Multi Layer Perceptron - Binary
+Multi Layer Perceptron - Binary Optimize
 ===========================================================================
-Multi Layer Perceptron - Binary
+Multi Layer Perceptron - Binary Optimize
 """
 import os
 from contextlib import contextmanager

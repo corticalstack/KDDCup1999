@@ -1,21 +1,19 @@
 """
 ===========================================================================
-Sampling techniques using KDD Cup 1999 IDS dataset
+Multi Layer Perceptron - Binary - PCA input
 ===========================================================================
-The following examples demonstrate various sampling techniques for a dataset
-in which classes are extremely imbalanced with heavily skewed features
+Multi Layer Perceptron - Binary - PCA input
 """
 import os
 import sys
 from contextlib import contextmanager
 import time
-import pandas as pd
 import numpy as np
-from sklearn.metrics import *
 from sklearn.model_selection import train_test_split, StratifiedKFold
 import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
-from keras import models, layers
+from keras import models, layers, optimizers
+from keras.utils import plot_model
 import keras.backend as K
 from filehandler import Filehandler
 from dataset import KDDCup1999
@@ -31,25 +29,18 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class Ann1DCMulti:
+class AnnMLPBinary:
     def __init__(self):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ignore low level instruction warnings
         tf.logging.set_verbosity(tf.logging.ERROR)  # Set tensorflow verbosity
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+        self.g = tf.Graph()
+        self.tf_sess = tf.Session(config=tf.ConfigProto(log_device_placement=True), graph=self.g)
 
-        with tf.device('/gpu:0'):
-            a = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[2, 3], name='a')
-            b = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[3, 2], name='b')
-            c = tf.matmul(a, b)
-
-        with tf.Session() as sess:
-            print(sess.run(c))
-
-        # self.logfile = None
-        # self.gettrace = getattr(sys, 'gettrace', None)
-        # self.original_stdout = sys.stdout
-        # self.timestr = time.strftime("%Y%m%d-%H%M%S")
-        # self.log_file()
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
 
         print(__doc__)
 
@@ -67,8 +58,8 @@ class Ann1DCMulti:
         self.y_train = None
         self.y_test = None
         self.n_features = None
-        self.label_map_int_2_string = {0: 'normal', 1: 'dos', 2: 'u2r', 3: 'r2l', 4: 'probe'}
-        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 2, 'r2l': 3, 'probe': 4}
+        self.label_map_int_2_string = {0: 'good', 1: 'bad', '0': 'good', '1': 'bad'}
+        self.label_map_string_2_int = {'normal': 0, 'dos': 1, 'u2r': 1, 'r2l': 1, 'probe': 1}
 
         # K-fold validation
         self.splits = 5
@@ -76,6 +67,7 @@ class Ann1DCMulti:
 
         # Network parameters
         self.epochs = 20
+        self.batch_size = 100
         self.verbose = 0
 
         # Scores
@@ -97,23 +89,18 @@ class Ann1DCMulti:
             self.train_test_split()
 
         with timer('\nTraining & validating model with kfold'):
-            # Train model on K-1 and validate using remaining fold
-            self.index = 0
-            self.batch_size = False
-            for train, val in self.kfold.split(self.X_train, self.y_train):
-                if not self.batch_size:
-                    self.batch_size = len(train) // 1000
-                    print('Batch size set at {}'.format(self.batch_size))
-                self.index += 1
-                self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_cv{}_{}'.format(self.index, time))
-                self.model = self.get_model()
-                self.y_train_onehotencoded = pd.get_dummies(self.y_train.iloc[train])
-                self.y_val_onehotencoded = pd.get_dummies(self.y_train.iloc[val])
+            self.g.as_default()  # Reset graph for tensorboard display
+            K.clear_session()
 
-                self.history = self.model.fit(self.X_train.iloc[train], self.y_train_onehotencoded,
-                                              validation_data=(self.X_train.iloc[val], self.y_val_onehotencoded),
-                                              epochs=self.epochs, batch_size=self.batch_size,
-                                              callbacks=[self.tensorboard])
+            # Train model on K-1 and validate using remaining fold
+            for train, val in self.kfold.split(self.X_train, self.y_train):
+                #self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_cv')
+                self.model = self.get_model()
+
+                self.history = self.model.fit(self.X_train.iloc[train], self.y_train.iloc[train],
+                                              validation_data=(self.X_train.iloc[val], self.y_train.iloc[val]),
+                                              epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose)
+                                              #callbacks=[self.tensorboard])
 
                 self.metric_loss.append(self.history.history['loss'])
                 self.metric_acc.append(self.history.history['acc'])
@@ -134,19 +121,21 @@ class Ann1DCMulti:
             print('Validation mean far', np.mean(self.metric_val_far))
 
         with timer('\nTesting model on unseen test set'):
-            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpmulticlass_test_{}'.format(time))
-            tf.reset_default_graph()  # Reset graph for tensorboard display
-
+            self.g.as_default()  # Reset graph for tensorboard display
             K.clear_session()
+
+            self.tensorboard = TensorBoard(log_dir='logs/tb/annmlpbinary_test')
             self.model = self.get_model()
-            self.y_test_onehotencoded = pd.get_dummies(self.y_test)
-            self.y_train_onehotencoded = pd.get_dummies(self.y_train)
 
             # Train model on complete train set and validate with unseen test set
-            self.history = self.model.fit(self.X_train, self.y_train_onehotencoded,
-                                          validation_data=(self.X_test, self.y_test_onehotencoded),
+            self.history = self.model.fit(self.X_train, self.y_train,
+                                          validation_data=(self.X_test, self.y_test),
                                           epochs=self.epochs, batch_size=self.batch_size, verbose=self.verbose,
                                           callbacks=[self.tensorboard])
+
+        with timer('\nVisualising results'):
+            # Plot model
+            plot_model(self.model, to_file='viz/annMLPBinary - model plot.png')
 
             # Get single class prediction (rather than multi class probability summing to 1)
             y_pred = self.model.predict_classes(self.X_test)
@@ -157,13 +146,10 @@ class Ann1DCMulti:
             print('Test far', np.mean(self.history.history['far']))
 
             # Remap to string class targets
-            self.y_pred = pd.Series(y_pred)
-            self.y_pred = self.map_target_to_label(self.y_pred)
+            self.y_pred = self.map_target_to_label(y_pred)
+            self.y_pred = self.y_pred.ravel()
             self.y_test = self.map_target_to_label(self.y_test)
 
-            # To numpy arrays for cm
-            self.y_pred = self.y_pred.values
-            self.y_test = self.y_test.values
             self.visualize.confusion_matrix(self.y_test, self.y_pred, self.__class__.__name__)
 
             epochs = range(1, len(self.history.history['loss']) + 1)
@@ -235,7 +221,7 @@ class Ann1DCMulti:
             plt.savefig(fname=self.fname(self.title), dpi=300, format='png')
             plt.show()
 
-        # self.log_file()
+        self.log_file()
         print('Finished')
 
     @staticmethod
@@ -259,14 +245,16 @@ class Ann1DCMulti:
 
     def get_model(self):
         model = models.Sequential()
-        model.add(layers.Embedding(self.n_features, self.n_features, input_length=self.n_features))
-        model.add(layers.Conv1D(32, 7, activation='relu'))
-        model.add(layers.MaxPool1D(5))
-        model.add(layers.Conv1D(32, 7, activation='relu'))
-        model.add(layers.GlobalMaxPooling1D())
-        model.add(layers.Dense(5, activation='softmax'))
-        model.summary()
-        model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy', self.dr, self.far])
+        model.add(layers.Dense(25, activation='relu', input_shape=(self.n_features,)))
+        model.add(layers.Dropout(0.08))
+        model.add(layers.Dense(25, activation='relu'))
+        model.add(layers.Dropout(0.08))
+        model.add(layers.Dense(25, activation='relu'))
+        model.add(layers.Dropout(0.08))
+        model.add(layers.Dense(25, activation='relu'))
+        model.add(layers.Dropout(0.08))
+        model.add(layers.Dense(1, activation='sigmoid'))
+        model.compile(optimizer=optimizers.RMSprop(lr=0.0023), loss='binary_crossentropy', metrics=['accuracy', self.dr, self.far])
         return model
 
     def log_file(self):
@@ -285,7 +273,7 @@ class Ann1DCMulti:
                 sys.stdout = self.logfile
 
     def load_data(self):
-        self.X = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_Tensor2d_type_1')
+        self.X = self.filehandler.read_csv(self.ds.config['path'], self.ds.config['file'] + '_Tensor2d_type_2')
         print('\tRow count:\t', '{}'.format(self.X.shape[0]))
         print('\tColumn count:\t', '{}'.format(self.X.shape[1]))
 
@@ -301,11 +289,11 @@ class Ann1DCMulti:
                                                                                 random_state=self.random_state)
 
     def map_target_to_label(self, t):
-        return t.map(self.label_map_int_2_string)
+        return np.vectorize(self.label_map_int_2_string.get)(t)
 
     def fname(self, title):
         return '{}/{}.png'.format(self.folder, title)
 
 
-ann1dcmulti = Ann1DCMulti()
+annmlpbinary = AnnMLPBinary()
 

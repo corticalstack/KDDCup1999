@@ -2,7 +2,7 @@
 ==============================================================================
 Feature selection techniques using KDD Cup 1999 IDS dataset
 ==============================================================================
-For dataset with 5 attack categories in which classes are extremely imbalanced
+Feature selection
 """
 import sys
 from contextlib import contextmanager

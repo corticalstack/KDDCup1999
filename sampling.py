@@ -91,8 +91,8 @@ class Sampling:
 
         with timer('\nScaling'):
             # Sampling options
-            for sampler in (#Original(),
-                            #RandomOverSampler(),
+            for sampler in (Original(),
+                            RandomOverSampler(),
                             SMOTE(random_state=self.random_state),
                             ADASYN(random_state=self.random_state),
                             BorderlineSMOTE(random_state=self.random_state, kind='borderline-1')):

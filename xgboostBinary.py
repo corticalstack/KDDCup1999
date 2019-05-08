@@ -1,8 +1,8 @@
 """
 ===========================================================================
-Logistic Regression
+XGBoost Binary
 ===========================================================================
-Logistic Regression
+XGBoost Binary
 """
 import sys
 from contextlib import contextmanager
@@ -10,7 +10,7 @@ import time
 import pandas as pd
 import numpy as np
 from sklearn.metrics import *
-from sklearn.linear_model import LogisticRegression
+from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 from filehandler import Filehandler
 from dataset import KDDCup1999
@@ -23,13 +23,13 @@ def timer(title):
     print('{} - done in {:.0f}s'.format(title, time.time() - t0))
 
 
-class LogisticRegressionBinary:
+class XGBoostBinary:
     def __init__(self):
-        # self.logfile = None
-        # self.gettrace = getattr(sys, 'gettrace', None)
-        # self.original_stdout = sys.stdout
-        # self.timestr = time.strftime("%Y%m%d-%H%M%S")
-        # self.log_file()
+        self.logfile = None
+        self.gettrace = getattr(sys, 'gettrace', None)
+        self.original_stdout = sys.stdout
+        self.timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.log_file()
 
         print(__doc__)
 
@@ -56,14 +56,19 @@ class LogisticRegressionBinary:
             self.train_test_split()
 
         with timer('\nTesting model on unseen test set'):
-            lr = LogisticRegression(penalty='l2', solver='sag', max_iter=self.max_iters)
-            lr.fit(self.X_train, self.y_train)
-            self.y_pred = lr.predict(self.X_test)
+            clf = XGBClassifier(n_estimators=100, random_state=self.random_state)
+            clf.fit(self.X_train, self.y_train)
+            self.y_pred = clf.predict(self.X_test)
             cm = confusion_matrix(self.y_test, self.y_pred)
-            self.tp = self.get_tp_from_cm(cm)
-            self.tn = self.get_tn_from_cm(cm)
-            self.fp = self.get_fp_from_cm(cm)
-            self.fn = self.get_fn_from_cm(cm)
+            self.tp = cm[1, 1]
+            self.tn = cm[0, 0]
+            self.fp = cm[0, 1]
+            self.fn = cm[1, 0]
+
+            print('True positive (TP)', self.tp)
+            print('True negative (TN)', self.tn)
+            print('False positive (FP)', self.fp)
+            print('false negative (FN)', self.fn)
 
             self.dr = self.tp / (self.tp + self.fp)
             self.far = self.fp / (self.tn + self.fp)
@@ -72,42 +77,8 @@ class LogisticRegressionBinary:
             print('False alarm rate: ', self.far)
             print('Accuracy: ', self.acc)
 
-        #self.log_file()
+        self.log_file()
         print('Finished')
-
-
-
-
-    # True positives are the diagonal elements
-    def get_tp_from_cm(self, cm):
-        tp = np.diag(cm)
-        print('tp', np.sum(np.diag(cm)))
-        return np.sum(tp)
-
-    def get_tn_from_cm(self, cm):
-        tn = []
-        for i in range(self.n_classes):
-            temp = np.delete(cm, i, 0)  # delete ith row
-            temp = np.delete(temp, i, 1)  # delete ith column
-            tn.append(sum(sum(temp)))
-        print('tn ', np.sum(tn))
-        return np.sum(tn)
-
-    # Sum of columns minus diagonal
-    def get_fp_from_cm(self, cm):
-        fp = []
-        for i in range(self.n_classes):
-            fp.append(sum(cm[:, i]) - cm[i, i])
-        print('fp ', np.sum(fp))
-        return np.sum(fp)
-
-    # Sum of rows minus diagonal
-    def get_fn_from_cm(self, cm):
-        fn = []
-        for i in range(self.n_classes):
-            fn.append(sum(cm[i, :]) - cm[i, i])
-        print('fn', np.sum(fn))
-        return np.sum(fn)
 
     def log_file(self):
         if self.gettrace is None:
@@ -147,5 +118,5 @@ class LogisticRegressionBinary:
         return '{}/{}.png'.format(self.folder, title)
 
 
-logisticregressionbinary = LogisticRegressionBinary()
+xgboostbinary = XGBoostBinary()
 
